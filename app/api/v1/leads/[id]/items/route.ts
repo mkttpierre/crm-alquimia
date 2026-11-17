@@ -18,6 +18,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { repositorioItensSupabase } from "@/lib/negocio/repositorio-itens";
 import { erroDoItem, paraRespostaLista } from "@/lib/negocio/resposta-itens";
+import { marcarGanhoPorProduto, reabrirSeSemItens } from "@/lib/negocio/ganho-por-itens";
 import { acrescentarTagsDeCompra } from "@/lib/negocio/tag-de-compra";
 import { itemAtualizarSchema, itemCriarSchema, itemIdQuerySchema } from "@/lib/negocio/schema-item";
 import { totalDoItem } from "@/lib/negocio/totais";
@@ -121,9 +122,14 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
       metadata: { lead_id: id, product_id: criado.product_id, quantidade: criado.quantidade, total_cents: criado.total_cents, currency: criado.currency },
     });
     // Produto adicionado = etiqueta `COMPROU <P>` no negócio (melhor esforço, nunca lança, nunca remove tag).
-    await acrescentarTagsDeCompra(await createClient(), { organization_id: org.orgId }, id, [{ product_id: criado.product_id, nome: criado.nome }]);
+    const sessao = await createClient();
+    const comoVenda = new URL(req.url).searchParams.get("venda") === "1";
+    await acrescentarTagsDeCompra(sessao, { organization_id: org.orgId }, id, [{ product_id: criado.product_id, nome: criado.nome }]);
+    // Produto lançado como venda: o negócio vai para Ganho e entra no faturamento do Início (ver lib/negocio/ganho-por-itens.ts).
+    // Só quando quem chama pede (`?venda=1`, o card da conversa): no dossiê do Kanban produto em negócio aberto pode ser previsão.
+    const ganho = comoVenda ? await marcarGanhoPorProduto(sessao, { organization_id: org.orgId, actor: { type: "user", id: user.id }, requestId, idioma: user.idioma }, id) : null;
     const depois = await lista(repo, org.orgId, id);
-    return ok({ item: criado, ...(depois ?? {}) }, { status: 201, requestId });
+    return ok({ item: criado, ganho, ...(depois ?? {}) }, { status: 201, requestId });
   } catch (e) {
     return erroDoItem(e, requestId);
   }
@@ -207,6 +213,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams): Promise
       requestId,
       metadata: { lead_id: id },
     });
+    // Sem nenhum produto o negócio deixa de ser venda: reabre (só se estava ganho).
+    if (new URL(req.url).searchParams.get("venda") === "1") await reabrirSeSemItens(await createClient(), { organization_id: org.orgId, actor: { type: "user", id: user.id }, requestId, idioma: user.idioma }, id);
     return noContent(requestId);
   } catch (e) {
     return erroDoItem(e, requestId);

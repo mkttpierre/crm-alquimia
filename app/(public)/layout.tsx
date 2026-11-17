@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Instrument_Serif, Syne } from "next/font/google";
+import { Syne } from "next/font/google";
 
 import { marcaDeSaidaFoiConfigurada } from "@/lib/branding/resolve";
 import { marcaDaSaida } from "@/lib/branding/saida";
@@ -67,14 +67,6 @@ const display = Syne({
   weight: ["700", "800"],
   display: "swap",
   variable: "--font-fachada-display",
-});
-
-const serifa = Instrument_Serif({
-  subsets: ["latin", "latin-ext"],
-  weight: "400",
-  style: ["italic"],
-  display: "swap",
-  variable: "--font-fachada-serifa",
 });
 
 const TOKENS_PRETO_E_BRANCO = {
@@ -150,63 +142,22 @@ function Sol({ className }: { className?: string }) {
 }
 
 /**
- * A escrita do painel. Sem marca própria é o nome do produto, sem o "CRM" (a do produto); com marca
- * própria é só o NOME dela, em texto, sem a arte do produto.
+ * A escrita do painel. SÓ com marca própria: o nome dela, em texto. A marca do produto não leva escrita
+ * (o logotipo "ALQUIM(IA)" saiu da tela de login a pedido do dono, 17/11/2026): fica o sol.
  */
-/**
- * O nome do produto partido para a escrita: sem o "CRM" que vem na frente e com o
- * sufixo entre parênteses à parte (que ganha a fonte serifada em itálico). Deriva do
- * NOME resolvido, nunca de uma constante escrita aqui.
- */
-function partesDaEscrita(nome: string): { base: string; sufixo: string } {
-  const semPrefixo = nome.replace(/^CRM\s+/i, "").trim();
-  const m = /^(.*?)(\([^)]*\))$/.exec(semPrefixo);
-  return m && m[1] ? { base: m[1].trim(), sufixo: m[2]! } : { base: semPrefixo, sufixo: "" };
-}
-
-function Escrita({
-  tamanho,
-  nome,
-  produto,
-}: {
-  tamanho: "grande" | "compacta";
-  nome: string;
-  produto: boolean;
-}) {
+function Escrita({ tamanho, nome }: { tamanho: "grande" | "compacta"; nome: string }) {
   const grande = tamanho === "grande";
-  const { base, sufixo } = partesDaEscrita(nome);
-  if (!produto) {
-    return (
-      <div className="select-none">
-        <span
-          className={
-            grande
-              ? "fachada-surgir fachada-atraso-3 block break-words font-[family-name:var(--font-fachada-display)] font-extrabold leading-[0.9] tracking-[-0.04em] text-white"
-              : "block break-words font-[family-name:var(--font-fachada-display)] font-extrabold leading-none tracking-[-0.03em] text-white"
-          }
-          style={{ fontSize: grande ? "clamp(2.2rem, 4vw, 4.5rem)" : "1.5rem" }}
-        >
-          {nome}
-        </span>
-      </div>
-    );
-  }
   return (
-    <div className="select-none" aria-label={nome} role="img">
+    <div className="select-none">
       <span
         className={
           grande
-            ? "fachada-surgir fachada-atraso-3 block whitespace-nowrap leading-[0.86] text-white"
-            : "block whitespace-nowrap leading-none text-white"
+            ? "fachada-surgir fachada-atraso-3 block break-words font-[family-name:var(--font-fachada-display)] font-extrabold leading-[0.9] tracking-[-0.04em] text-white"
+            : "block break-words font-[family-name:var(--font-fachada-display)] font-extrabold leading-none tracking-[-0.03em] text-white"
         }
-        style={{ fontSize: grande ? "clamp(3rem, 5.4vw, 6.5rem)" : "1.9rem" }}
+        style={{ fontSize: grande ? "clamp(2.2rem, 4vw, 4.5rem)" : "1.5rem" }}
       >
-        <span className="font-[family-name:var(--font-fachada-display)] font-extrabold tracking-[-0.045em]">
-          {base}
-        </span>
-        <span className="font-[family-name:var(--font-fachada-serifa)] italic tracking-[-0.02em] text-white/90">
-          {sufixo}
-        </span>
+        {nome}
       </span>
     </div>
   );
@@ -236,7 +187,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <div
         data-fachada="preto-e-branco"
         style={TOKENS_PRETO_E_BRANCO}
-        className={`${display.variable} ${serifa.variable} relative isolate min-h-screen overflow-hidden bg-[#050505] text-[#f4f4f4] lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(26rem,1fr)]`}
+        className={`${display.variable} relative isolate min-h-screen overflow-hidden bg-[#050505] text-[#f4f4f4] lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(26rem,1fr)]`}
       >
         {/* Grão por cima de tudo, sem pegar clique. */}
         <div
@@ -283,7 +234,7 @@ export default async function PublicLayout({ children }: { children: React.React
           )}
 
           <div className="flex items-end">
-            <Escrita tamanho="grande" nome={marca.nome} produto={!marcaPropria} />
+            {marcaPropria && <Escrita tamanho="grande" nome={marca.nome} />}
           </div>
         </aside>
 
@@ -297,7 +248,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 <Sol className="fachada-giro relative size-full object-contain" />
               </div>
             )}
-            <Escrita tamanho="compacta" nome={marca.nome} produto={!marcaPropria} />
+            {marcaPropria && <Escrita tamanho="compacta" nome={marca.nome} />}
           </header>
 
           <div className="flex flex-1 items-center justify-center py-10">

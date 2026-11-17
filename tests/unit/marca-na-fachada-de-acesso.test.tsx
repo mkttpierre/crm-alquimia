@@ -89,7 +89,7 @@ describe("a casca das telas de acesso", () => {
     expect(html).toContain("formulário");
   });
 
-  it("sem NADA configurado, a fachada desenha o sol e a escrita do produto, acima do formulário", async () => {
+  it("sem NADA configurado, a fachada desenha o sol do produto, sem escrita, acima do formulário", async () => {
     const html = await fachada({
       ...MARCA,
       nome: "CRM ALQUIM(IA)",
@@ -101,9 +101,9 @@ describe("a casca das telas de acesso", () => {
     expect(html).toContain('data-marca="produto"');
     expect(html).toContain('src="data:image/png;base64,');
     expect(html).not.toContain('src="/icone-crm');
-    expect(html).toContain('aria-label="CRM ALQUIM(IA)"');
-    // O "CRM" de cima sai: a escrita mostra só o nome, partido em base e sufixo.
-    expect(html).toContain(">(IA)<");
+    // Sem escrita do produto: o logotipo saiu da tela de login (pedido do dono, 17/11/2026); fica o sol.
+    expect(html).not.toContain('aria-label="CRM ALQUIM(IA)"');
+    expect(html).not.toContain(">(IA)<");
     expect(html).not.toContain(">CRM<");
     expect(html).toContain('data-fachada="preto-e-branco"');
     // O rodapé leva só o ano.

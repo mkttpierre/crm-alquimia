@@ -54,7 +54,9 @@ export function useCatalogoParaNegocio(ativo: boolean) {
  * Depois de mexer nos itens o banco já recalculou `crm_leads.value_cents`: invalida a lista, o quadro e o resumo do
  * contato para o valor novo aparecer em todo lugar sem recarregar a página.
  */
-export function useMutacoesDeItens(leadId: string) {
+export function useMutacoesDeItens(leadId: string, opcoes: { venda?: boolean } = {}) {
+  // `venda`: produto lançado vira venda (negócio Ganho) e tirar o último reabre. Só o card da conversa pede.
+  const sufixo = opcoes.venda ? "?venda=1" : "";
   const qc = useQueryClient();
   const aoTerminar = () => {
     void qc.invalidateQueries({ queryKey: chave(leadId) });
@@ -64,7 +66,7 @@ export function useMutacoesDeItens(leadId: string) {
   const aoFalhar = (err: unknown) => showApiError(err);
   return {
     criar: useMutation({
-      mutationFn: (corpo: ItemCriarInput) => apiClient.post(`/api/v1/leads/${leadId}/items`, corpo),
+      mutationFn: (corpo: ItemCriarInput) => apiClient.post<{ data?: { ganho?: { marcado: boolean; motivo?: string } | null } }>(`/api/v1/leads/${leadId}/items${sufixo}`, corpo),
       onSuccess: aoTerminar,
       onError: aoFalhar,
     }),
@@ -74,7 +76,7 @@ export function useMutacoesDeItens(leadId: string) {
       onError: aoFalhar,
     }),
     apagar: useMutation({
-      mutationFn: (itemId: string) => apiClient.delete(`/api/v1/leads/${leadId}/items?item_id=${itemId}`),
+      mutationFn: (itemId: string) => apiClient.delete(`/api/v1/leads/${leadId}/items?item_id=${itemId}${opcoes.venda ? "&venda=1" : ""}`),
       onSuccess: aoTerminar,
       onError: aoFalhar,
     }),

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { repositorioItensSupabase } from "@/lib/negocio/repositorio-itens";
+import { marcarGanhoPorProduto, reabrirSeSemItens } from "@/lib/negocio/ganho-por-itens";
 import { acrescentarTagsDeCompra } from "@/lib/negocio/tag-de-compra";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
@@ -12,6 +13,10 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({})) 
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 vi.mock("@/lib/negocio/repositorio-itens", () => ({ repositorioItensSupabase: vi.fn() }));
+vi.mock("@/lib/negocio/ganho-por-itens", () => ({
+  marcarGanhoPorProduto: vi.fn(async () => ({ marcado: true })),
+  reabrirSeSemItens: vi.fn(async () => true),
+}));
 vi.mock("@/lib/negocio/tag-de-compra", () => ({ acrescentarTagsDeCompra: vi.fn(async () => undefined) }));
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -100,6 +105,25 @@ describe("POST /leads/[id]/items", () => {
     expect((await POST(req("POST", { product_id: PROD }), ctx)).status).toBe(201);
     expect(acrescentarTagsDeCompra).toHaveBeenCalledTimes(1);
     expect(acrescentarTagsDeCompra).toHaveBeenCalledWith(expect.anything(), { organization_id: ORG_ID }, LEAD, [{ product_id: PROD, nome: "Kit Ouro" }]);
+  });
+
+  it("com ?venda=1 o produto lançado marca o negócio como ganho e devolve o resultado", async () => {
+    repo.buscarProduto.mockResolvedValue({ id: PROD, codigo: "ROSA-1", nome: "Kit Rosa", preco_cents: 5000, moeda: "BRL", ativo: true });
+    repo.criar.mockImplementation(async (_o: string, _u: string, _l: string, linha: object) => item(linha as Record<string, unknown>));
+    const { POST } = await import("./route");
+    const res = await POST(req("POST", { product_id: PROD }, "?venda=1"), ctx);
+    expect(res.status).toBe(201);
+    expect(marcarGanhoPorProduto).toHaveBeenCalledTimes(1);
+    expect(marcarGanhoPorProduto).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ organization_id: ORG_ID }), LEAD);
+    expect((await res.json()).data.ganho).toEqual({ marcado: true });
+  });
+
+  it("sem ?venda=1 (dossiê do Kanban) o negócio NÃO é marcado como ganho", async () => {
+    repo.buscarProduto.mockResolvedValue({ id: PROD, codigo: "ROSA-1", nome: "Kit Rosa", preco_cents: 5000, moeda: "BRL", ativo: true });
+    repo.criar.mockImplementation(async (_o: string, _u: string, _l: string, linha: object) => item(linha as Record<string, unknown>));
+    const { POST } = await import("./route");
+    expect((await POST(req("POST", { product_id: PROD }), ctx)).status).toBe(201);
+    expect(marcarGanhoPorProduto).not.toHaveBeenCalled();
   });
 
   it("item recusado (422) não mexe em tag", async () => {
@@ -203,6 +227,15 @@ describe("DELETE /leads/[id]/items", () => {
     expect(res.status).toBe(204);
     expect(repo.apagar).toHaveBeenCalledWith(ORG_ID, LEAD, ITEM);
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "lead_item.deleted" }));
+  });
+
+  it("com ?venda=1 tirar o produto tenta reabrir o negócio sem produto; sem ela, não", async () => {
+    repo.apagar.mockResolvedValue(true);
+    const { DELETE } = await import("./route");
+    expect((await DELETE(req("DELETE", undefined, `?item_id=${ITEM}`), ctx)).status).toBe(204);
+    expect(reabrirSeSemItens).not.toHaveBeenCalled();
+    expect((await DELETE(req("DELETE", undefined, `?item_id=${ITEM}&venda=1`), ctx)).status).toBe(204);
+    expect(reabrirSeSemItens).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ organization_id: ORG_ID }), LEAD);
   });
 
   it("sem item_id responde 422; item inexistente responde 404", async () => {

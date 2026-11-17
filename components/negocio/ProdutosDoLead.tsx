@@ -17,9 +17,10 @@ import { produtosParaSeletor } from "@/lib/negocio/seletor-produtos";
 export function ProdutosDoLead({ leadId, podeEditar, aoMudar }: { leadId: string; podeEditar: boolean; aoMudar?: () => void }) {
   const t = useT();
   const lista = useItensDoNegocio(leadId);
-  const { criar, apagar } = useMutacoesDeItens(leadId);
+  const { criar, apagar } = useMutacoesDeItens(leadId, { venda: true });
   const [aberto, setAberto] = React.useState(false);
   const [busca, setBusca] = React.useState("");
+  const [aviso, setAviso] = React.useState<string | null>(null);
   const catalogo = useCatalogoParaNegocio(aberto && podeEditar);
 
   const moeda = lista.data?.currency ?? "BRL";
@@ -31,7 +32,9 @@ export function ProdutosDoLead({ leadId, podeEditar, aoMudar }: { leadId: string
     criar.mutate(
       { product_id: produtoId, quantidade: 1, desconto_cents: 0, acrescimo_cents: 0 },
       {
-        onSuccess: () => {
+        onSuccess: (resp) => {
+          const ganho = (resp as { data?: { ganho?: { marcado: boolean } | null } } | undefined)?.data?.ganho;
+          setAviso(ganho && !ganho.marcado ? t("Produto lançado, mas o funil não tem etapa de Ganho: ele não entra no faturamento do Início.") : null);
           setAberto(false);
           setBusca("");
           aoMudar?.();
@@ -96,6 +99,12 @@ export function ProdutosDoLead({ leadId, podeEditar, aoMudar }: { leadId: string
             })}
           </select>
         </div>
+      )}
+
+      {aviso && (
+        <p role="status" className="mt-2 text-xs text-error-fg">
+          {aviso}
+        </p>
       )}
 
       {itens.length === 0 && !aberto && <p className="mt-2 text-xs text-text-muted">{t("Nenhum produto neste negócio ainda.")}</p>}
