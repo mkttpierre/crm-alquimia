@@ -863,10 +863,31 @@ export const BARRA_LATERAL: readonly SecaoDaBarra[] = [
 ];
 
 /**
- * Destinos que NÃO têm linha na barra, com o porquê. Esta lista só encolhe.
- * Continuam no ⌘K (`searchable()` filtra só por papel e pela interface).
+ * Destinos que NÃO têm linha na barra, com o porquê. Continuam no ⌘K
+ * (`searchable()` filtra só por papel e pela interface).
+ *
+ * É só isto: "sem linha". Tirar uma tela do submenu de um GRUPO é outra decisão,
+ * com lista própria (`FORA_DO_SUBMENU`).
  */
 export const FORA_DA_BARRA: Readonly<Partial<Record<NavDestinationId, string>>> = {
+  "/app/settings/personalizar":
+    "a porta é o botão Personalizar, na linha do usuário (modo personalização, 16/11/2026), e o 'Mais opções' dele; segue no hub de Configurações e no ⌘K",
   "/app/integrations/nuvemshop":
     "fora do menu por decisão do dono do produto (a integração não é usada); segue no ⌘K — ver o comentário da entrada no catálogo",
+};
+
+/**
+ * Destinos que o submenu de um GRUPO da barra não lista (`barraParaPersonalizar`),
+ * com o porquê. O hub do grupo (ex.: Configurações) e o ⌘K seguem listando todos.
+ *
+ * Lista PRÓPRIA, separada de `FORA_DA_BARRA`, de propósito: aquela diz "esta tela não
+ * tem linha na barra"; esta diz "esta tela sai do submenu do grupo dela". Misturar as
+ * duas fazia a próxima entrada de `FORA_DA_BARRA` sumir de um submenu sem ninguém querer
+ * (achado 12 da revisão de 16/11/2026). Toda entrada daqui também consta em
+ * `FORA_DA_BARRA` (não tem porta própria na barra) — vigiado em
+ * `components/app/BarraLateral.test.tsx`.
+ */
+export const FORA_DO_SUBMENU: Readonly<Partial<Record<NavDestinationId, string>>> = {
+  "/app/settings/personalizar":
+    "a porta é o botão Personalizar, na linha do usuário (modo personalização, 16/11/2026), e o 'Mais opções' dele; segue no hub de Configurações e no ⌘K",
 };

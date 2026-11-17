@@ -57,6 +57,8 @@ export {
   Plus,
   Trash,
   PencilSimple,
+  // modo personalização da barra lateral: a alça de arrastar
+  DotsSixVertical,
   MagnifyingGlass,
   Pause,
   Play,

@@ -5,12 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { repositorioItensSupabase } from "@/lib/negocio/repositorio-itens";
+import { acrescentarTagsDeCompra } from "@/lib/negocio/tag-de-compra";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({})) }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 vi.mock("@/lib/negocio/repositorio-itens", () => ({ repositorioItensSupabase: vi.fn() }));
+vi.mock("@/lib/negocio/tag-de-compra", () => ({ acrescentarTagsDeCompra: vi.fn(async () => undefined) }));
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const ORG_ID = "22222222-2222-4222-8222-222222222222";
@@ -89,6 +91,21 @@ describe("POST /leads/[id]/items", () => {
     expect([org, usuario, lead]).toEqual([ORG_ID, USER_ID, LEAD]);
     expect(linha).toMatchObject({ product_id: PROD, nome: "Kit A", sku: "KIT-A1", preco_unit_cents: 5000, quantidade: 2, desconto_cents: 1000, currency: "BRL" });
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "lead_item.created", organizationId: ORG_ID }));
+  });
+
+  it("produto adicionado acrescenta a tag de compra (org da sessão, lead e nome/produto do item criado)", async () => {
+    repo.buscarProduto.mockResolvedValue({ id: PROD, codigo: "OURO-1", nome: "Kit Ouro", preco_cents: 5000, moeda: "BRL", ativo: true });
+    repo.criar.mockImplementation(async (_o: string, _u: string, _l: string, linha: object) => item(linha as Record<string, unknown>));
+    const { POST } = await import("./route");
+    expect((await POST(req("POST", { product_id: PROD }), ctx)).status).toBe(201);
+    expect(acrescentarTagsDeCompra).toHaveBeenCalledTimes(1);
+    expect(acrescentarTagsDeCompra).toHaveBeenCalledWith(expect.anything(), { organization_id: ORG_ID }, LEAD, [{ product_id: PROD, nome: "Kit Ouro" }]);
+  });
+
+  it("item recusado (422) não mexe em tag", async () => {
+    const { POST } = await import("./route");
+    expect((await POST(req("POST", { nome: "Frete" }), ctx)).status).toBe(422);
+    expect(acrescentarTagsDeCompra).not.toHaveBeenCalled();
   });
 
   it("organization_id no corpo é ignorado: vale a org da sessão", async () => {

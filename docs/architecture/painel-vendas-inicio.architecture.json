@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Painel Vendas e faturamento no Início",
+    "subtitle": "Seletor de painéis, números da mesma fonte do Faturamento, meta do mês e gasto com anúncios (migration 0262)",
+    "output": "painel-vendas-inicio.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "Pessoa" },
+    { "id": "app", "label": "Aplicativo" },
+    { "id": "db", "label": "Banco" },
+    { "id": "externo", "label": "Plataforma de anúncios" }
+  ],
+  "mainPath": ["inicio", "cookie", "carregar", "faturamento", "tabelas"],
+  "nodes": [
+    { "id": "inicio", "lane": "humano", "col": 0, "type": "ui", "label": "Início: seletor de painéis (manager+) e período na URL" },
+    { "id": "cookie", "lane": "app", "col": 1, "type": "service", "label": "Cookie da pessoa lido no servidor (lib/inicio/painel.ts)" },
+    { "id": "carregar", "lane": "app", "col": 2, "type": "service", "label": "carregarPainelDeVendas (sessão e organização, sem preço de catálogo)" },
+    { "id": "faturamento", "lane": "app", "col": 3, "type": "service", "label": "calcularFaturamento: a mesma conta da tela Faturamento (produto interno fora)" },
+    { "id": "tabelas", "lane": "db", "col": 4, "type": "database", "label": "crm_leads · crm_lead_items · orders · organizations" },
+    { "id": "acao_meta", "lane": "app", "col": 1, "type": "service", "label": "definirMetaMensal: Zod + admin + MFA + auditoria" },
+    { "id": "fn_meta", "lane": "db", "col": 2, "type": "database", "label": "fn_definir_meta_mensal (admin, 42501)" },
+    { "id": "meta", "lane": "db", "col": 3, "type": "database", "label": "organizations.meta_mensal_cents" },
+    { "id": "gasto", "lane": "app", "col": 3, "type": "service", "label": "Fonte de gasto por plataforma (Meta Ads lê; Google Ads não conectado)" },
+    { "id": "insights", "lane": "externo", "col": 4, "type": "external", "label": "Insights de Meta Ads, só leitura, credencial já guardada" },
+    { "id": "auditoria", "lane": "db", "col": 2, "type": "database", "label": "api_audit_log (org.meta_mensal_updated, sem o valor)" }
+  ],
+  "edges": [
+    { "from": "inicio", "to": "cookie", "label": "painel escolhido" },
+    { "from": "cookie", "to": "carregar", "label": "só com manager+" },
+    { "from": "carregar", "to": "faturamento", "label": "período e anterior" },
+    { "from": "faturamento", "to": "tabelas", "label": "leitura por organization_id" },
+    { "from": "inicio", "to": "acao_meta", "label": "admin define a meta" },
+    { "from": "acao_meta", "to": "fn_meta", "label": "p_actor da sessão" },
+    { "from": "fn_meta", "to": "meta", "label": "grava ou apaga" },
+    { "from": "acao_meta", "to": "auditoria", "label": "org.meta_mensal_updated" },
+    { "from": "carregar", "to": "meta", "label": "lê a meta do mês" },
+    { "from": "inicio", "to": "gasto", "label": "gasto, ROAS e custo por venda" },
+    { "from": "gasto", "to": "insights", "label": "gasto do período" }
+  ]
+}

@@ -26300,6 +26300,93 @@ grant  execute on function public.fn_definir_nomes_da_barra(uuid, uuid, jsonb)
 
 notify pgrst, 'reload schema';
 
+-- ---- meta mensal de vendas (migration 0262) ----
+-- Meta de faturamento do mês do painel de vendas do Início: organizations.meta_mensal_cents
+-- (centavos, NULL = sem meta, CHECK 1..10^14) e fn_definir_meta_mensal, SECURITY DEFINER só para
+-- service_role (o ator vem por argumento, admin conferido de novo no banco, como a 0261). Só aditiva.
+-- A meta é legível por qualquer membro da organização pela REST (política `orgs_select` + GRANT de tabela):
+-- decisão aceita, detalhada no cabeçalho da migration 0262.
+alter table public.organizations
+  add column if not exists meta_mensal_cents bigint;
+
+comment on column public.organizations.meta_mensal_cents is
+  'Migration 0262: meta mensal de faturamento do painel de vendas, em centavos, na moeda da organização (organizations.currency). NULL = sem meta.';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+     where conname = 'organizations_meta_mensal_cents_faixa'
+       and conrelid = 'public.organizations'::regclass
+  ) then
+    alter table public.organizations
+      add constraint organizations_meta_mensal_cents_faixa check (
+        meta_mensal_cents is null
+        or (meta_mensal_cents > 0 and meta_mensal_cents <= 100000000000000)
+      );
+  end if;
+end $$;
+
+create or replace function public.fn_definir_meta_mensal(
+  p_organization_id uuid,
+  p_actor           uuid,
+  p_meta_cents      bigint
+) returns integer
+    language plpgsql
+    volatile
+    security definer
+    set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_linhas integer;
+begin
+  if p_organization_id is null or p_actor is null then
+    raise exception 'meta_mensal_argumento_nulo' using errcode = '22023';
+  end if;
+
+  -- Autorização ANTES de olhar o valor: quem não pode gravar recebe 42501, que é a
+  -- verdade sobre ele, e não um 22023 sobre o número que mandou.
+  if not exists (
+       select 1 from public.user_organizations uo
+        where uo.user_id = p_actor
+          and uo.organization_id = p_organization_id
+          and uo.role = 'admin'
+          and uo.revoked_at is null
+     )
+     and not exists (
+       select 1 from public.platform_admins pa
+        where pa.user_id = p_actor
+          and pa.revoked_at is null
+     )
+  then
+    raise exception 'meta_mensal_sem_permissao' using errcode = '42501';
+  end if;
+
+  -- NULL limpa a meta. Zero, negativo ou acima do teto não é meta.
+  if p_meta_cents is not null and (p_meta_cents <= 0 or p_meta_cents > 100000000000000) then
+    raise exception 'meta_mensal_fora_da_faixa' using errcode = '22023';
+  end if;
+
+  update public.organizations o
+     set meta_mensal_cents = p_meta_cents,
+         updated_at = now()
+   where o.id = p_organization_id;
+
+  get diagnostics v_linhas = row_count;
+  return v_linhas;
+end;
+$$;
+
+comment on function public.fn_definir_meta_mensal(uuid, uuid, bigint) is
+  'Grava organizations.meta_mensal_cents. Só admin da organização ou platform admin (42501). NULL limpa a meta; zero, negativo ou acima de 10^14 levanta 22023. Devolve linhas afetadas: 0 = a organização não existe. Chamador: app/actions/inicio/definirMetaMensal.ts.';
+
+revoke execute on function public.fn_definir_meta_mensal(uuid, uuid, bigint)
+  from public, anon, authenticated;
+grant  execute on function public.fn_definir_meta_mensal(uuid, uuid, bigint)
+  to service_role;
+
+notify pgrst, 'reload schema';
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES

@@ -492,6 +492,9 @@ export const AUDIT_ACTIONS = [
   // da organização, então é mutação de tenant e audita. A preferência PESSOAL (ocultos e ordem) não audita: é da pessoa,
   // só apresentação, e encheria a trilha de quem apenas arrumou a própria barra. Grava SÓ a contagem, nunca os nomes.
   "org.barra_nomes_updated",
+  // A meta mensal de faturamento do painel de vendas do Início (migration 0262): valor da empresa, definido só pelo admin, então
+  // é mutação de tenant e audita. Grava só se a meta foi definida ou limpa, nunca o valor (é número do negócio).
+  "org.meta_mensal_updated",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

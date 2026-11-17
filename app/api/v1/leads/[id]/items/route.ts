@@ -18,6 +18,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { repositorioItensSupabase } from "@/lib/negocio/repositorio-itens";
 import { erroDoItem, paraRespostaLista } from "@/lib/negocio/resposta-itens";
+import { acrescentarTagsDeCompra } from "@/lib/negocio/tag-de-compra";
 import { itemAtualizarSchema, itemCriarSchema, itemIdQuerySchema } from "@/lib/negocio/schema-item";
 import { totalDoItem } from "@/lib/negocio/totais";
 import { createClient } from "@/lib/supabase/server";
@@ -119,6 +120,8 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
       requestId,
       metadata: { lead_id: id, product_id: criado.product_id, quantidade: criado.quantidade, total_cents: criado.total_cents, currency: criado.currency },
     });
+    // Produto adicionado = etiqueta `COMPROU <P>` no negócio (melhor esforço, nunca lança, nunca remove tag).
+    await acrescentarTagsDeCompra(await createClient(), { organization_id: org.orgId }, id, [{ product_id: criado.product_id, nome: criado.nome }]);
     const depois = await lista(repo, org.orgId, id);
     return ok({ item: criado, ...(depois ?? {}) }, { status: 201, requestId });
   } catch (e) {

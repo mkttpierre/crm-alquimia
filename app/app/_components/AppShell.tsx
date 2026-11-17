@@ -33,6 +33,8 @@ export function AppShell({ sidebarCollapsed, marcaPropria, children }: AppShellP
   const t = useT();
   const [escondida, setEscondida] = useState(sidebarCollapsed);
   const [gaveta, setGaveta] = useState(false);
+  // O modo personalização está ligado na gaveta: ela só fecha por Cancelar ou Concluir.
+  const [editandoNaGaveta, setEditandoNaGaveta] = useState(false);
   const [, startTransition] = useTransition();
 
   function alternarMenu() {
@@ -48,13 +50,33 @@ export function AppShell({ sidebarCollapsed, marcaPropria, children }: AppShellP
   return (
     <div className="flex min-h-screen w-full bg-background">
       <BarraLateral escondida={escondida} marcaPropria={marcaPropria} />
-      <Sheet open={gaveta} onOpenChange={setGaveta}>
+      <Sheet
+        open={gaveta}
+        // Também barra o "X" da gaveta: fechar desmonta o conteúdo e o modo inteiro se perde.
+        onOpenChange={(aberta) => {
+          if (!aberta && editandoNaGaveta) return;
+          setGaveta(aberta);
+        }}
+      >
         <SheetContent
           side="left"
+          // Escape e toque fora fecham a gaveta, e com isso jogariam fora o que a pessoa mexeu
+          // no modo personalização (o estado dele mora no conteúdo, que desmonta).
+          onEscapeKeyDown={(e) => {
+            if (editandoNaGaveta) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (editandoNaGaveta) e.preventDefault();
+          }}
           className="w-[264px] max-w-[calc(100vw-2rem)] gap-0 border-lateral-linha bg-lateral p-0 text-lateral-texto sm:max-w-[264px]"
         >
           <SheetTitle className="sr-only">{t("Navegação principal")}</SheetTitle>
-          <ConteudoDaBarra aoNavegar={() => setGaveta(false)} marcaPropria={marcaPropria} />
+          <ConteudoDaBarra
+            naGaveta
+            aoNavegar={() => setGaveta(false)}
+            aoMudarEdicao={setEditandoNaGaveta}
+            marcaPropria={marcaPropria}
+          />
         </SheetContent>
       </Sheet>
       {/*

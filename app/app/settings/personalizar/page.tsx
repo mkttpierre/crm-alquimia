@@ -29,9 +29,9 @@ import {
   lerPreferenciasDaBarra,
   preferenciasTemEscolha,
   type PersonalizacaoDaBarra,
-  type PreferenciasDaBarra,
 } from "@/lib/navigation/personalizar";
-import { barraParaPersonalizar, chavesConhecidasDaBarra } from "@/lib/navigation/registry";
+import { preservadosDaPersonalizacao } from "@/lib/navigation/personalizar-edicao";
+import { barraParaPersonalizar } from "@/lib/navigation/registry";
 
 import { BlocoDaMarcaDaOrganizacao } from "../marca/_bloco";
 
@@ -87,19 +87,14 @@ export default async function PersonalizarPage() {
     nome: i.nomeProprio ? i.label : "",
   }));
   const chavesListadas = new Set(linhas.map((i) => i.chave));
-  const preservados = Object.fromEntries(
-    Object.entries(nomesGravados).filter(([chave]) => !chavesListadas.has(chave)),
-  );
-
   // O que está gravado e NÃO aparece agora (a interface do vínculo ou o papel tiraram
   // a linha) volta no envio de "Salvar", para um "Salvar" de hoje não apagar a escolha
   // de uma linha que o admin pode liberar amanhã. Chave que saiu do catálogo se perde.
-  const conhecidas = chavesConhecidasDaBarra();
-  const mantem = (chave: string) => conhecidas.has(chave) && !chavesListadas.has(chave);
-  const preservadasDaBarra: PreferenciasDaBarra = {
-    ocultos: preferencias.ocultos.filter(mantem),
-    ordem: preferencias.ordem.filter(mantem),
-  };
+  // A mesma regra do modo personalização da barra (`preservadosDaPersonalizacao`).
+  const { preferencias: preservadasDaBarra, nomes: preservados } = preservadosDaPersonalizacao(
+    personalizacao,
+    chavesListadas,
+  );
 
   // Muda quando o que está gravado muda: é o que faz os formulários remontarem
   // com o estado novo depois do `router.refresh()` de "Salvar" e "Restaurar".

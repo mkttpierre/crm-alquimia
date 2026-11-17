@@ -23,6 +23,7 @@ import { ContactTagsEditor } from "./ContactTagsEditor";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
+import { AbaProdutosDoNegocio } from "@/components/negocio/AbaProdutosDoNegocio";
 import { useEditLead } from "@/hooks/kanban/useUpdateLead";
 import { cn } from "@/lib/utils";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -337,6 +338,9 @@ function InboxLeadEditor({
           {ativo.title} · {ativo.status}
         </p>
       )}
+      <div data-testid="inbox-produtos">
+        <AbaProdutosDoNegocio key={`produtos-${ativo.id}`} leadId={ativo.id} aoMudar={onSalvo} compacto />
+      </div>
       <CamposDoFunil
         key={ativo.id}
         leadId={ativo.id}
@@ -348,6 +352,9 @@ function InboxLeadEditor({
     </div>
   );
 }
+
+const CAMPOS_DE_PRODUTO = new Set(["kit escolhido", "kit_escolhido", "quantidade"]);
+const normalizaRotulo = (s: string): string => s.trim().toLowerCase();
 
 function CamposDoFunil({
   leadId,
@@ -365,8 +372,10 @@ function CamposDoFunil({
   const t = useT();
   const edit = useEditLead(pipelineId);
   const [customFields, setCustomFields] = useState(valores);
+  // "Kit escolhido" e "Quantidade" viraram a seção Produtos (catálogo + valor + etiqueta); o dado antigo fica guardado.
+  const camposVisiveis = useMemo(() => fieldDefs.filter((f) => !CAMPOS_DE_PRODUTO.has(normalizaRotulo(f.label)) && !CAMPOS_DE_PRODUTO.has(normalizaRotulo(f.key))), [fieldDefs]);
 
-  if (fieldDefs.length === 0) {
+  if (camposVisiveis.length === 0) {
     return <p className="text-xs text-muted-foreground">{t("Este funil não tem campos extras.")}</p>;
   }
 
@@ -383,7 +392,7 @@ function CamposDoFunil({
   return (
     <div className="space-y-3">
       <CustomFieldsEditor
-        fields={fieldDefs}
+        fields={camposVisiveis}
         value={customFields}
         onChange={setCustomFields}
         mode="lead"

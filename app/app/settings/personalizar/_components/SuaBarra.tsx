@@ -22,11 +22,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/hooks/i18n/useT";
+import { moverItem, type PreferenciasDaBarra } from "@/lib/navigation/personalizar";
 import {
-  LIMITE_DE_CHAVES,
-  moverItem,
-  type PreferenciasDaBarra,
-} from "@/lib/navigation/personalizar";
+  alternarOculto,
+  ERRO_DA_BARRA_PESSOAL,
+  ERRO_GENERICO,
+  montarPreferencias,
+} from "@/lib/navigation/personalizar-edicao";
 import { CaretDown, CaretUp, Lock } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -45,16 +47,6 @@ export interface BlocoEditavel {
   titulo: string | null;
   itens: LinhaEditavel[];
 }
-
-/** Mensagem por código de recusa da Server Action. */
-const ERRO_EM_PORTUGUES: Record<string, string> = {
-  validation_failed: "Algum campo não está no formato esperado.",
-  unauthenticated: "Sua sessão expirou. Entre de novo para salvar.",
-  forbidden_tenant: "Não consegui identificar sua empresa. Recarregue a página.",
-  forbidden_role: "Você não tem permissão para fazer esta alteração.",
-  // NUNCA "salvo com uma ressalva": a gravação não casou nenhuma linha.
-  nao_gravou: "A alteração não chegou ao banco — nada foi mudado. Tente de novo.",
-};
 
 export function SuaBarra({
   blocos,
@@ -89,12 +81,7 @@ export function SuaBarra({
   const rotulo = (i: LinhaEditavel) => (i.nomeProprio ? i.label : t(i.label));
 
   function alternar(chave: string) {
-    setEstado((atual) =>
-      atual.map((b) => ({
-        ...b,
-        itens: b.itens.map((i) => (i.chave === chave && !i.fixo ? { ...i, oculto: !i.oculto } : i)),
-      })),
-    );
+    setEstado((atual) => alternarOculto(atual, chave));
   }
 
   function mover(blocoId: string, chave: string, delta: -1 | 1) {
@@ -128,21 +115,12 @@ export function SuaBarra({
       router.refresh();
       return;
     }
-    toast.error(t(ERRO_EM_PORTUGUES[r.error] ?? "Não foi possível salvar. Tente de novo."));
+    toast.error(t(ERRO_DA_BARRA_PESSOAL[r.error] ?? ERRO_GENERICO));
   }
 
   function salvar() {
     startTransition(async () => {
-      const r = await updateMinhaBarra({
-        ocultos: [
-          ...estado.flatMap((b) => b.itens.filter((i) => i.oculto).map((i) => i.chave)),
-          ...preservados.ocultos,
-        ].slice(0, LIMITE_DE_CHAVES),
-        ordem: [...estado.flatMap((b) => b.itens.map((i) => i.chave)), ...preservados.ordem].slice(
-          0,
-          LIMITE_DE_CHAVES,
-        ),
-      });
+      const r = await updateMinhaBarra(montarPreferencias(estado, preservados));
       resposta(r, "Sua barra foi salva.");
     });
   }

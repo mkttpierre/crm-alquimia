@@ -448,16 +448,26 @@ describe("a porta da tela Personalizar não depende da interface do vínculo", (
 
   for (const [nome, settings] of Object.entries(interfaces)) {
     for (const papel of ["viewer", "agent", "manager", "admin"] as const) {
-      it(`${nome}, ${papel}: aparece no hub de Configurações, no ⌘K e no submenu da barra`, () => {
+      it(`${nome}, ${papel}: aparece no hub de Configurações e no ⌘K, e NÃO no submenu da barra (a porta é o botão Personalizar)`, () => {
         const hub = hubSections("organizacao", false, papel, settings).flatMap((s) =>
           s.items.map((d) => d.href),
         );
         expect(hub).toContain(PORTA);
         expect(searchable(false, papel, settings).map((d) => d.href)).toContain(PORTA);
-        const submenu = barraLateral(false, papel, settings).flatMap((s) =>
-          s.itens.flatMap((i) => i.submenu.map((x) => x.href)),
-        );
-        expect(submenu).toContain(PORTA);
+        const secoes = barraLateral(false, papel, settings);
+        const submenu = secoes.flatMap((s) => s.itens.flatMap((i) => i.submenu.map((x) => x.href)));
+        // Prova de que o teste olha uma barra de verdade: a linha de Configurações existe e o
+        // submenu dela tem conteúdo. Sem isto, `not.toContain` passaria também com a barra vazia
+        // ou com a linha sumida (achado 3 da revisão).
+        const configuracoes = secoes
+          .flatMap((s) => s.itens)
+          .find((i) => i.chave === CHAVE_TRAVADA);
+        expect(configuracoes, "linha de Configurações na barra").toBeDefined();
+        expect(configuracoes!.submenu.length, "submenu de Configurações").toBeGreaterThan(0);
+        expect(submenu.length).toBeGreaterThan(0);
+        // Desde o modo personalização (16/11/2026) a porta da barra é o botão do rodapé, que
+        // não depende da interface: o submenu de Configurações não lista mais a tela.
+        expect(submenu).not.toContain(PORTA);
       });
     }
   }

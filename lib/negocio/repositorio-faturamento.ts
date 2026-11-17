@@ -39,6 +39,9 @@ interface GanhoLido {
   title: string | null;
   owner_user_id: string | null;
   owner_kind: string | null;
+  created_at: string | null;
+  contact_id: string | null;
+  tags: string[] | null;
 }
 
 type Pagina<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
@@ -68,7 +71,7 @@ export function repositorioFaturamentoSupabase(db: SupabaseClient): RepositorioF
         paginar<GanhoLido>((de, ate) =>
           db
             .from("crm_leads")
-            .select("id, pipeline_id, closed_at, value_cents, currency, title, owner_user_id, owner_kind")
+            .select("id, pipeline_id, closed_at, value_cents, currency, title, owner_user_id, owner_kind, created_at, contact_id, tags")
             .eq("organization_id", org)
             .eq("status", "won")
             .gte("closed_at", janela.de)
@@ -132,6 +135,9 @@ export function repositorioFaturamentoSupabase(db: SupabaseClient): RepositorioF
           titulo: l.title,
           owner_user_id: l.owner_user_id,
           owner_kind: l.owner_kind,
+          created_at: l.created_at,
+          contact_id: l.contact_id,
+          tags: l.tags,
           itens: itensPorLead.get(l.id) ?? [],
         })),
         pedidos: pedidos.linhas,

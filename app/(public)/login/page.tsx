@@ -28,10 +28,19 @@ export default async function LoginPage({
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Entrar")}</h1>
-        <p className="text-sm text-muted-foreground">{branding().name}</p>
+    <div className="space-y-7">
+      <div className="space-y-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-white/40">
+          {t("Bem-vindo de volta")}
+        </p>
+        <h1 className="font-[family-name:var(--font-fachada-display)] text-[2.6rem] font-extrabold leading-none tracking-[-0.04em]">
+          {t("Entrar")}
+        </h1>
+        <p className="text-sm text-white/45">
+          {/* O nome da instalação fica num nó próprio: `icone-da-marca.spec.ts` o
+              procura com `exact: true` para cruzar com o título da aba. */}
+          <span>{branding().name}</span>
+        </p>
       </div>
       {reset === "success" && (
         <div
@@ -87,20 +96,18 @@ export default async function LoginPage({
         </div>
       )}
       <LoginForm next={next} />
-      <div className="space-y-2 text-center text-sm">
-        <p>
-          <Link
-            href="/login/forgot"
-            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            {t("Esqueci minha senha")}
-          </Link>
-        </p>
-        <p className="text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-white/[0.08] pt-6 text-sm">
+        <Link
+          href="/login/forgot"
+          className="text-white/50 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white"
+        >
+          {t("Esqueci minha senha")}
+        </Link>
+        <p className="text-white/40">
           {t("Não tem conta?")}{" "}
           <Link
             href="/signup"
-            className="font-medium text-foreground underline underline-offset-4"
+            className="font-medium text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white"
           >
             {t("Criar conta")}
           </Link>

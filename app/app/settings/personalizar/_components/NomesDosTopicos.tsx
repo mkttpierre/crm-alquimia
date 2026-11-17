@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/hooks/i18n/useT";
 import { LIMITE_DO_NOME } from "@/lib/navigation/personalizar";
+import { ERRO_DOS_NOMES, ERRO_GENERICO, montarNomes } from "@/lib/navigation/personalizar-edicao";
 
 export interface CampoDeNome {
   chave: string;
@@ -37,15 +38,6 @@ export interface CampoDeNome {
   /** O que o admin gravou; vazio = usa o padrão. */
   nome: string;
 }
-
-const ERRO_EM_PORTUGUES: Record<string, string> = {
-  validation_failed: "Algum nome não está no formato esperado (até 40 caracteres).",
-  unauthenticated: "Sua sessão expirou. Entre de novo para salvar.",
-  forbidden_tenant: "Não consegui identificar sua empresa. Recarregue a página.",
-  forbidden_role: "Só quem administra esta empresa pode mudar os nomes.",
-  mfa_required: "Confirme o código do seu aplicativo de duas etapas e tente de novo.",
-  nao_gravou: "A alteração não chegou ao banco — nada foi mudado. Tente de novo.",
-};
 
 export function NomesDosTopicos({
   campos,
@@ -73,17 +65,18 @@ export function NomesDosTopicos({
         router.refresh();
         return;
       }
-      toast.error(t(ERRO_EM_PORTUGUES[r.error] ?? "Não foi possível salvar. Tente de novo."));
+      toast.error(t(ERRO_DOS_NOMES[r.error] ?? ERRO_GENERICO));
     });
   }
 
   function salvar() {
-    const editados = Object.fromEntries(
-      campos
-        .map((c) => [c.chave, (valores[c.chave] ?? "").trim()] as const)
-        .filter(([, n]) => n !== ""),
+    enviar(
+      montarNomes(
+        campos.map((c) => ({ chave: c.chave, nome: valores[c.chave] ?? "" })),
+        preservados,
+      ),
+      "Os nomes foram salvos.",
     );
-    enviar({ ...preservados, ...editados }, "Os nomes foram salvos.");
   }
 
   return (

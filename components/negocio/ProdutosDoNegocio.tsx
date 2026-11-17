@@ -67,7 +67,7 @@ function totalDoRascunho(r: Rascunho): number | null {
  * Aba "Produtos" do negócio: linhas de produto do catálogo ou avulsas, com quantidade, desconto, acréscimo e cupom.
  * O total vem do servidor (o banco soma e mantém o valor do negócio igual); o total do formulário é só prévia.
  */
-export function ProdutosDoNegocio({ leadId, podeEditar }: { leadId: string; podeEditar: boolean }) {
+export function ProdutosDoNegocio({ leadId, podeEditar, aoMudar }: { leadId: string; podeEditar: boolean; aoMudar?: () => void }) {
   const t = useT();
   const lista = useItensDoNegocio(leadId);
   const { criar, atualizar, apagar } = useMutacoesDeItens(leadId);
@@ -98,6 +98,11 @@ export function ProdutosDoNegocio({ leadId, podeEditar }: { leadId: string; pode
     setBusca("");
   }
 
+  const aposSalvar = () => {
+    fechar();
+    aoMudar?.();
+  };
+
   function salvar() {
     const n = leitura(rascunho);
     if (!n || totalDoRascunho(rascunho) === null) {
@@ -106,7 +111,7 @@ export function ProdutosDoNegocio({ leadId, podeEditar }: { leadId: string; pode
     }
     const cupom = rascunho.cupom.trim() === "" ? null : rascunho.cupom.trim();
     if (editandoId) {
-      atualizar.mutate({ item_id: editandoId, ...n, nome: rascunho.nome.trim() || undefined, cupom }, { onSuccess: fechar });
+      atualizar.mutate({ item_id: editandoId, ...n, nome: rascunho.nome.trim() || undefined, cupom }, { onSuccess: aposSalvar });
       return;
     }
     if (!rascunho.produtoId && rascunho.nome.trim() === "") {
@@ -119,7 +124,7 @@ export function ProdutosDoNegocio({ leadId, podeEditar }: { leadId: string; pode
         ...n,
         cupom,
       },
-      { onSuccess: fechar },
+      { onSuccess: aposSalvar },
     );
   }
 
@@ -166,7 +171,7 @@ export function ProdutosDoNegocio({ leadId, podeEditar }: { leadId: string; pode
                   >
                     {t("Editar")}
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" disabled={ocupado} onClick={() => apagar.mutate(i.id)}>
+                  <Button type="button" variant="ghost" size="sm" disabled={ocupado} onClick={() => apagar.mutate(i.id, { onSuccess: () => aoMudar?.() })}>
                     {t("Remover")}
                   </Button>
                 </>

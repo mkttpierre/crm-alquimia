@@ -1,21 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useId, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 import { VersionFooter } from "@/components/shell/VersionFooter";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
-import { ROTULO_DO_PAPEL } from "@/lib/auth/types";
-import { barraLateral, type ItemDaBarra } from "@/lib/navigation/registry";
-import { CaretDown } from "@/lib/ui/icons";
+import { ROTULO_DO_PAPEL, roleAtLeast } from "@/lib/auth/types";
+import type { PersonalizacaoDaBarra } from "@/lib/navigation/personalizar";
+import { preservadosDaPersonalizacao } from "@/lib/navigation/personalizar-edicao";
+import {
+  barraLateral,
+  barraParaPersonalizar,
+  FORA_DA_BARRA,
+  type ItemDaBarra,
+} from "@/lib/navigation/registry";
+import { CaretDown, PencilSimple } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
+import { EdicaoDaBarra, ROTA_DE_PERSONALIZAR, temMudanca } from "./EdicaoDaBarra";
 import { EquipeAgora } from "./EquipeAgora";
 import { MarcaDoProduto } from "./MarcaDoProduto";
 import { AvatarDoUsuario, MenuDoUsuario } from "./MenuDoUsuario";
+import { usePersonalizacaoDaBarra, type PartesDaBarra } from "./usePersonalizacaoDaBarra";
 
 /** O destino que casa com a rota atual — o MAIS longo, para `/app/settings` não acender junto com `/app/settings/marca`. */
 function casamento(pathname: string, hrefs: string[]): string | null {
@@ -41,7 +50,7 @@ const LINHA_ESTADO = (ativa: boolean) =>
 
 /**
  * O conteúdo da barra lateral (protótipo A): marca, os três blocos de navegação,
- * "Equipe agora" e quem está logado. Serve à barra fixa do computador e à gaveta
+ * "Equipe agora" e quem está logado (com o lápis do modo personalização). Serve à barra fixa do computador e à gaveta
  * do celular (`components/app/Topo.tsx` abre a gaveta), para as duas nunca
  * divergirem.
  *
@@ -50,27 +59,92 @@ const LINHA_ESTADO = (ativa: boolean) =>
  */
 export function ConteudoDaBarra({
   aoNavegar,
+  aoMudarEdicao,
+  naGaveta = false,
   marcaPropria,
 }: {
   aoNavegar?: () => void;
+  /**
+   * Avisa quando o modo personalização liga e desliga. A gaveta do celular usa para NÃO
+   * fechar enquanto o modo está ligado: o estado do modo mora aqui, e fechar a gaveta
+   * desmonta este componente e joga fora o que a pessoa mexeu. Tem de ser estável.
+   */
+  aoMudarEdicao?: (editando: boolean) => void;
+  /** É a gaveta do celular: os botões do modo ganham alvo de toque maior. */
+  naGaveta?: boolean;
   /** Ver `MarcaDoProduto`: resolvido no servidor. */
   marcaPropria: boolean;
 }) {
   const t = useT();
+  const router = useRouter();
   const pathname = usePathname() ?? "";
   const { user, activeOrg } = useAuth();
-  const secoes = barraLateral(
-    user.is_platform_admin && !user.support,
-    activeOrg?.role ?? null,
-    activeOrg?.interface_settings,
-    activeOrg?.barra,
-  );
+  // Modo personalização (botão da linha do usuário): a própria barra vira editável. A
+  // barra desenha a personalização com estado otimista (ver `usePersonalizacaoDaBarra`).
+  const [editando, setEditando] = useState(false);
+  const { personalizacao, salvar } = usePersonalizacaoDaBarra(activeOrg?.barra);
+  const plataforma = user.is_platform_admin && !user.support;
+  const papel = activeOrg?.role ?? null;
+  const secoes = barraLateral(plataforma, papel, activeOrg?.interface_settings, personalizacao);
+
+  // O que a pessoa PODE fazer no modo. Sem nenhuma das duas o modo seria uma tela morta
+  // (suporte somente leitura vira `viewer`), então o botão nem aparece.
+  //  - renomear (vale para a empresa toda): admin da empresa, ou o dono da plataforma fora de suporte;
+  //  - remover e reordenar a barra DA PESSOA: precisa de vínculo próprio na organização e
+  //    de não estar em suporte (o dono da plataforma sem vínculo recebia `nao_gravou` sempre).
+  const podeRenomear = plataforma || roleAtLeast(activeOrg?.role, "admin");
+  const podeOrdenar =
+    !user.support &&
+    !!activeOrg &&
+    user.organizations.some((o) => o.organization_id === activeOrg.orgId);
+  const podePersonalizar = !!activeOrg && (podeRenomear || podeOrdenar);
+
+  // Foco do teclado: ao sair do modo volta ao botão que o ligou (senão cai no <body>).
+  const botaoPersonalizar = useRef<HTMLButtonElement>(null);
+  const devolverFoco = useRef(false);
+  function entrarNoModo() {
+    devolverFoco.current = false;
+    setEditando(true);
+  }
+  function sairDoModo(devolver: boolean) {
+    devolverFoco.current = devolver;
+    setEditando(false);
+  }
+  useEffect(() => {
+    if (editando || !devolverFoco.current) return;
+    devolverFoco.current = false;
+    botaoPersonalizar.current?.focus();
+  }, [editando]);
+
+  // O cleanup também roda quando a gaveta desmonta este componente: o aviso nunca fica "ligado".
+  useEffect(() => {
+    aoMudarEdicao?.(editando);
+    return () => aoMudarEdicao?.(false);
+  }, [editando, aoMudarEdicao]);
+
+  /** "Mais opções": com mudança pendente grava ANTES de ir (mesma gravação do Concluir). */
+  async function irParaPersonalizar(partes: PartesDaBarra) {
+    sairDoModo(false);
+    // Sem mudança o próprio link navega; aqui só fecha a gaveta.
+    if (!temMudanca(partes)) {
+      aoNavegar?.();
+      return;
+    }
+    await salvar(partes);
+    router.push(ROTA_DE_PERSONALIZAR);
+    aoNavegar?.();
+  }
 
   // Todos os hrefs da barra, para o casamento mais longo valer entre linhas e submenus.
   const todos = secoes.flatMap((s) =>
     s.itens.flatMap((i) => [i.href, ...i.submenu.map((x) => x.href)]),
   );
-  const ativo = casamento(pathname, todos);
+  // Tela sem linha na barra (a de Personalizar): `/app/settings/personalizar` casaria com o hub
+  // `/app/settings` e o leitor de tela anunciaria "Visão geral" como a página atual.
+  const foraDaBarra = Object.keys(FORA_DA_BARRA).some(
+    (h) => pathname === h || pathname.startsWith(h + "/"),
+  );
+  const ativo = foraDaBarra ? null : casamento(pathname, todos);
   // Ids por instância (`useId`): com a gaveta do celular aberta, a barra existe
   // duas vezes no documento, e um id fixo repetido quebra `aria-labelledby`.
   const base = useId();
@@ -80,6 +154,20 @@ export function ConteudoDaBarra({
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5 px-[10px] py-[14px] [--color-text-muted:var(--color-lateral-suave)] [--color-text:var(--color-lateral-texto)]">
       <MarcaDoProduto marcaPropria={marcaPropria} />
+      {editando && activeOrg ? (
+        <ModoPersonalizacao
+          plataforma={plataforma}
+          podeOrdenar={podeOrdenar}
+          botoesGrandes={naGaveta}
+          onConcluir={(partes) => {
+            sairDoModo(true);
+            void salvar(partes);
+          }}
+          onCancelar={() => sairDoModo(true)}
+          onMaisOpcoes={(partes) => void irParaPersonalizar(partes)}
+          personalizacao={personalizacao}
+        />
+      ) : (
       <div className="flex min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--color-lateral-ativo)_transparent] flex-col gap-[14px] overflow-y-auto">
         <nav aria-label={t("Navegação principal")} className="flex flex-col gap-[14px]">
           {secoes.map(({ secao, itens }) => {
@@ -114,27 +202,94 @@ export function ConteudoDaBarra({
         </nav>
         <EquipeAgora />
       </div>
-      <VersionFooter collapsed={false} onNavigate={aoNavegar} />
-      <MenuDoUsuario lado="top" alinhamento="start">
-        <button
-          type="button"
-          aria-label={t("Menu do usuário")}
-          className="flex w-full items-center gap-2.5 border-t border-lateral-linha px-2 pt-2.5 pb-1 text-left hover:bg-lateral-hover"
-        >
-          <AvatarDoUsuario />
-          <span className="min-w-0">
-            <b className="block truncate text-[13px] font-semibold text-lateral-texto">
-              {user.full_name ?? user.email}
-            </b>
-            {activeOrg?.role && (
-              <span className="block truncate text-[12px] text-lateral-suave">
-                {t(ROTULO_DO_PAPEL[activeOrg.role])}
-              </span>
-            )}
-          </span>
-        </button>
-      </MenuDoUsuario>
+      )}
+      {!editando && <VersionFooter collapsed={false} onNavigate={aoNavegar} />}
+      {/* O Personalizar é um ícone NA linha do usuário: o rodapé não ganha uma linha própria
+          (num notebook de 768 px ela empurrava Configurações para fora da área visível). */}
+      <div className="flex items-center gap-1 border-t border-lateral-linha pt-2.5 pb-1">
+        <MenuDoUsuario lado="top" alinhamento="start">
+          <button
+            type="button"
+            aria-label={t("Menu do usuário")}
+            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 text-left hover:bg-lateral-hover"
+          >
+            <AvatarDoUsuario />
+            <span className="min-w-0">
+              <b className="block truncate text-[13px] font-semibold text-lateral-texto">
+                {user.full_name ?? user.email}
+              </b>
+              {activeOrg?.role && (
+                <span className="block truncate text-[12px] text-lateral-suave">
+                  {t(ROTULO_DO_PAPEL[activeOrg.role])}
+                </span>
+              )}
+            </span>
+          </button>
+        </MenuDoUsuario>
+        {!editando && podePersonalizar && (
+          <button
+            ref={botaoPersonalizar}
+            type="button"
+            aria-label={t("Personalizar")}
+            title={t("Personalizar a barra")}
+            onClick={entrarNoModo}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-lateral-item transition-colors hover:bg-lateral-hover hover:text-lateral-texto"
+          >
+            <PencilSimple size={18} aria-hidden />
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+/**
+ * O modo personalização: monta as linhas COM as ocultas (`barraParaPersonalizar`, a
+ * mesma projeção da tela de Personalizar) e o que está gravado e não aparece agora.
+ * Quem salva é o chamador. Montado só enquanto o modo está ligado, então o estado de
+ * edição nasce do que a barra mostra naquele instante.
+ */
+function ModoPersonalizacao({
+  plataforma,
+  podeOrdenar,
+  botoesGrandes,
+  personalizacao,
+  onConcluir,
+  onCancelar,
+  onMaisOpcoes,
+}: {
+  plataforma: boolean;
+  /** Pode remover e reordenar a barra da pessoa (fora de suporte e com vínculo na organização). */
+  podeOrdenar: boolean;
+  botoesGrandes: boolean;
+  personalizacao: PersonalizacaoDaBarra;
+  onConcluir: (partes: PartesDaBarra) => void;
+  onCancelar: () => void;
+  onMaisOpcoes: (partes: PartesDaBarra) => void;
+}) {
+  const { activeOrg } = useAuth();
+  const [partida] = useState(() => {
+    const secoes = barraParaPersonalizar(
+      plataforma,
+      activeOrg?.role ?? null,
+      activeOrg?.interface_settings,
+      personalizacao,
+    );
+    const listadas = new Set(secoes.flatMap((s) => s.itens.map((i) => i.chave)));
+    return { secoes, preservados: preservadosDaPersonalizacao(personalizacao, listadas) };
+  });
+  return (
+    <EdicaoDaBarra
+      secoes={partida.secoes}
+      preservados={partida.preservados}
+      // Mesma regra da tela: admin da empresa, ou o dono da plataforma fora de suporte.
+      ehAdmin={plataforma || roleAtLeast(activeOrg?.role, "admin")}
+      podeOrdenar={podeOrdenar}
+      botoesGrandes={botoesGrandes}
+      aoConcluir={onConcluir}
+      aoCancelar={onCancelar}
+      aoMaisOpcoes={onMaisOpcoes}
+    />
   );
 }
 

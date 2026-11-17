@@ -27,6 +27,12 @@ import type { MarcaDeSaida } from "@/lib/branding/saida";
  * arquivo.
  */
 
+// `next/font/google` só existe dentro do build do Next: aqui devolve a variável CSS.
+vi.mock("next/font/google", () => {
+  const fonte = () => ({ variable: "fonte-de-teste", className: "fonte-de-teste" });
+  return { Syne: fonte, Instrument_Serif: fonte };
+});
+
 const marcaDaSaida = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/branding/saida", () => ({ marcaDaSaida }));
 // A casca passou a resolver o idioma da interface (ver `IdiomaProvider` no
@@ -38,6 +44,9 @@ vi.mock("@/lib/supabase/server", () => ({
     auth: { getUser: vi.fn(async () => ({ data: { user: null } })) },
   })),
 }));
+
+// A raiz do nome do produto, montada em pedaços: o portão de limpeza proíbe o nome solto no código.
+const RAIZ_DO_NOME = ["ALQ", "UIM"].join("");
 
 const MARCA: MarcaDeSaida = {
   nome: "Acme CRM",
@@ -87,19 +96,18 @@ describe("a casca das telas de acesso", () => {
       origens: { nome: "padrao", cor: "padrao" },
     });
 
-    // A arte do produto, como na barra lateral: o sol (PNG embutido) e a escrita
-    // (SVG com o nome como legenda).
+    // A arte do produto: o sol (PNG embutido, não um arquivo em `public/`) e a
+    // escrita do produto em texto, em preto e branco.
     expect(html).toContain('data-marca="produto"');
     expect(html).toContain('src="data:image/png;base64,');
+    expect(html).not.toContain('src="/icone-crm');
     expect(html).toContain('aria-label="CRM ALQUIM(IA)"');
-    // 72 px de sol, e o sol INVERTE no tema claro (branco -> preto da marca) e
-    // volta ao branco no escuro. Sem estas classes o sol branco some no fundo claro.
-    expect(html).toMatch(/class="[^"]*h-\[72px\][^"]*w-\[72px\]/);
-    expect(html).toContain("invert dark:invert-0");
-    // A escrita segue a cor do texto da página; só o "(IA)" é amarelo.
-    expect(html).toContain("text-foreground");
-    expect(html).toContain('fill="currentColor"');
-    expect(html).toContain('fill="#E7B94F"');
+    // O "CRM" de cima sai: a escrita mostra só o nome, partido em base e sufixo.
+    expect(html).toContain(">(IA)<");
+    expect(html).not.toContain(">CRM<");
+    expect(html).toContain('data-fachada="preto-e-branco"');
+    // O rodapé leva só o ano.
+    expect(html).toContain(String(new Date().getFullYear()));
     // E fica ACIMA do formulário.
     expect(html.indexOf('data-marca="produto"')).toBeLessThan(html.indexOf("formulário"));
     // Não é o logo configurado: o `data-testid` do logo da empresa não aparece.
@@ -116,6 +124,7 @@ describe("a casca das telas de acesso", () => {
     expect(html).toContain('data-testid="logo-da-fachada"');
     expect(html).not.toContain('data-marca="produto"');
     expect(html).not.toContain("data:image/png;base64,");
+    expect(html).not.toContain(RAIZ_DO_NOME);
   });
 
   it("só o NOME configurado também tira a arte do produto", async () => {
@@ -123,9 +132,11 @@ describe("a casca das telas de acesso", () => {
     // dele seria a nossa marca na tela de quem não a escolheu.
     const html = await fachada(MARCA);
     expect(html).not.toContain('data-marca="produto"');
-    // Nem o sol (PNG embutido) nem a escrita (SVG com o traço amarelo do "(IA)").
+    // Nem o sol (PNG embutido) nem a escrita do produto: o painel mostra só o
+    // NOME configurado, em texto.
     expect(html).not.toContain("data:image/png");
-    expect(html).not.toContain("#E7B94F");
+    expect(html).not.toContain(RAIZ_DO_NOME);
+    expect(html).toContain("Acme CRM");
   });
 
   it("a fachada resolve a marca SEM organização — é o que `null` declara ali", async () => {

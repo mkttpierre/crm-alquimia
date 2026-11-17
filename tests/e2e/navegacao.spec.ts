@@ -312,16 +312,33 @@ test.describe("navegação agrupada", () => {
     // Antes, Configurações morava num rodapé fixo, fora da área que
     // rola. Na barra nova ela é a última linha de Gestão; o que se cobra é o que
     // importava: estar à vista sem rolar no notebook comum.
+    //
+    // A régua NÃO é a janela (768): é o fundo do contêiner que rola. O rodapé da barra
+    // (usuário + lápis do Personalizar) fica FORA dele e o encolhe; comparar com 768
+    // deixava passar uma Configurações cortada pelo overflow-y-auto (achado 2 da revisão).
     await page.setViewportSize({ width: 1280, height: 768 });
     await loginAdmin(page);
 
     const config = sidebar(page).getByRole("button", { name: "Configurações" });
     await expect(config).toBeVisible();
-    const caixa = await config.boundingBox();
-    expect(caixa, "Configurações renderizada").not.toBeNull();
-    expect(caixa!.y + caixa!.height, "Configurações dentro da dobra de 768px").toBeLessThanOrEqual(
-      768,
-    );
+    const medidas = await config.evaluate((el) => {
+      let area: HTMLElement | null = el.parentElement;
+      while (area) {
+        const o = getComputedStyle(area).overflowY;
+        if (o === "auto" || o === "scroll") break;
+        area = area.parentElement;
+      }
+      return {
+        achouArea: !!area,
+        fundoDaLinha: el.getBoundingClientRect().bottom,
+        fundoDaArea: area ? area.getBoundingClientRect().bottom : 0,
+      };
+    });
+    expect(medidas.achouArea, "contêiner que rola da barra").toBe(true);
+    expect(
+      medidas.fundoDaLinha,
+      "Configurações dentro da área visível do contêiner que rola (sem rolar)",
+    ).toBeLessThanOrEqual(medidas.fundoDaArea + 0.5);
   });
 
   test("um agent não vê o que a permissão tira, e nenhum título sobra vazio", async ({ page }) => {

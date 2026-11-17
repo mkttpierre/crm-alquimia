@@ -17,7 +17,7 @@ interface ItemDaVenda {
  */
 export async function acrescentarTagsDeCompra(
   supabase: SupabaseClient,
-  ctx: HandlerCtx,
+  ctx: Pick<HandlerCtx, "organization_id">,
   leadId: string,
   itens: ReadonlyArray<ItemDaVenda>,
 ): Promise<void> {

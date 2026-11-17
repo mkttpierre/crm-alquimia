@@ -49,6 +49,7 @@ import {
 
 import {
   BARRA_LATERAL,
+  FORA_DO_SUBMENU,
   NAV_CATALOG,
   NAV_GROUPS,
   type IconeDaBarra,
@@ -66,7 +67,13 @@ import {
   ordenarBloco,
   type PersonalizacaoDaBarra,
 } from "./personalizar";
-export { NAV_GROUPS, GRUPO_NO_RODAPE, BARRA_LATERAL, FORA_DA_BARRA } from "./catalogo";
+export {
+  NAV_GROUPS,
+  GRUPO_NO_RODAPE,
+  BARRA_LATERAL,
+  FORA_DA_BARRA,
+  FORA_DO_SUBMENU,
+} from "./catalogo";
 export type { NavGroup, NavGroupId } from "./catalogo";
 const ICONS = {
   Bell,
@@ -313,8 +320,12 @@ export function barraParaPersonalizar(
     for (const e of s.entradas)
       if (e.tipo === "destino") [e.href, ...(e.subpaginas ?? [])].forEach((h) => comLugar.add(h));
 
+  // `FORA_DO_SUBMENU` fora do submenu: Personalizar tem o botão da linha do usuário (o hub
+  // de Configurações, o ⌘K e o "Mais opções" continuam levando à tela).
   const doGrupo = (id: NavGroupId) =>
-    NAV_DESTINATIONS.filter((d) => d.group === id && visivel.has(d.href));
+    NAV_DESTINATIONS.filter(
+      (d) => d.group === id && visivel.has(d.href) && !(d.href in FORA_DO_SUBMENU),
+    );
   const hubDe = (id: NavGroupId): ItemDoSubmenu[] => {
     const hub = grupo.get(id)?.hub;
     return hub && doGrupo(id).length > 0 ? [{ href: hub.href, label: hub.label }] : [];

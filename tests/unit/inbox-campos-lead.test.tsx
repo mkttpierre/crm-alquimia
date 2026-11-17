@@ -66,6 +66,10 @@ vi.mock("@/hooks/inbox/useConversationTags", () => ({
 vi.mock("@/hooks/contacts/useUpdateContact", () => ({
   useUpdateContact: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+// A aba de produtos tem testes próprios: aqui só interessa que o painel a monte para o negócio ativo.
+vi.mock("@/components/negocio/AbaProdutosDoNegocio", () => ({
+  AbaProdutosDoNegocio: ({ leadId }: { leadId: string }) => <div data-testid="aba-produtos" data-lead-id={leadId} />,
+}));
 
 beforeEach(() => {
   get.mockReset();
@@ -95,6 +99,52 @@ describe("painel do inbox — campos do lead", () => {
     const secao = await screen.findByTestId("inbox-campos-lead");
     await waitFor(() => expect(secao.textContent).toMatch(/não tem campos extras/i));
     expect(screen.queryByLabelText("Empresa")).toBeNull();
+  });
+
+  it("mostra a seção Produtos montada para o negócio ativo", async () => {
+    get.mockResolvedValue({ data: RESPOSTA });
+    renderPainel();
+
+    const secao = await screen.findByTestId("inbox-produtos");
+    expect(secao).toBeTruthy();
+    expect(screen.getByTestId("aba-produtos").getAttribute("data-lead-id")).toBe("l-1");
+  });
+
+  it("esconde Kit escolhido e Quantidade (por rótulo ou chave) e mantém os demais campos", async () => {
+    get.mockResolvedValue({
+      data: {
+        ...RESPOSTA,
+        leads: [
+          {
+            ...LEAD,
+            custom_fields: { empresa: "ACME", kit_escolhido: "5 meses", qtd: "2" },
+            field_defs: [
+              { key: "empresa", label: "Empresa", type: "text" as const },
+              { key: "kit_escolhido", label: "Kit escolhido", type: "text" as const },
+              { key: "qtd", label: " QUANTIDADE ", type: "text" as const },
+              { key: "quantidade", label: "Qtd.", type: "text" as const },
+            ],
+          },
+        ],
+      },
+    });
+    renderPainel();
+
+    await screen.findByLabelText("Empresa");
+    expect(screen.queryByLabelText("Kit escolhido")).toBeNull();
+    expect(screen.queryByLabelText(/quantidade/i)).toBeNull();
+    expect(screen.queryByLabelText("Qtd.")).toBeNull();
+  });
+
+  it("funil só com campos de produto cai em 'não tem campos extras'", async () => {
+    get.mockResolvedValue({
+      data: { ...RESPOSTA, leads: [{ ...LEAD, field_defs: [{ key: "kit_escolhido", label: "Kit escolhido", type: "text" as const }] }] },
+    });
+    renderPainel();
+
+    const secao = await screen.findByTestId("inbox-campos-lead");
+    await waitFor(() => expect(secao.textContent).toMatch(/não tem campos extras/i));
+    expect(screen.queryByLabelText("Kit escolhido")).toBeNull();
   });
 
   it("gravar manda o campo customizado no PATCH do lead", async () => {

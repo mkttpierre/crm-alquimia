@@ -31,6 +31,12 @@ export interface NegocioGanhoParaFaturar {
   /** Quem atendeu: `owner_user_id` (pessoa) ou `owner_kind = "ai"` (agente de IA). Ambos ausentes = sem atendente. */
   owner_user_id?: string | null;
   owner_kind?: string | null;
+  /** Quando o negócio nasceu: o painel de vendas do Início mede o tempo até a venda. */
+  created_at?: string | null;
+  /** O cliente: o painel de vendas conta quem comprou de novo. */
+  contact_id?: string | null;
+  /** Tags do negócio: o painel de vendas agrupa as vendas pelas tags de origem. */
+  tags?: string[] | null;
 }
 
 export interface PedidoParaFaturar {
@@ -109,7 +115,8 @@ function ymdValido(s: string): boolean {
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
-const somarDias = (ymd: string, dias: number): string => new Date(new Date(`${ymd}T00:00:00.000Z`).getTime() + dias * DIA_MS).toISOString().slice(0, 10);
+/** Soma dias a um dia civil (AAAA-MM-DD). Exportada: o painel de vendas do Início faz a mesma conta de calendário. */
+export const somarDias = (ymd: string, dias: number): string => new Date(new Date(`${ymd}T00:00:00.000Z`).getTime() + dias * DIA_MS).toISOString().slice(0, 10);
 
 /** Dia civil (AAAA-MM-DD) de um instante no fuso. Fuso inválido cai no padrão do produto. */
 export function diaCivil(instante: string | Date, timezone: string): string {

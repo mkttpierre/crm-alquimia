@@ -7467,6 +7467,7 @@ export type Database = {
           legal_name: string
           locale: string
           media_retention_days: number
+          meta_mensal_cents: number | null
           nomes_da_barra: NonNullable<Json>
           onboarded_at: string | null
           onboarding_state: NonNullable<Json>
@@ -7495,6 +7496,7 @@ export type Database = {
           legal_name: string
           locale?: string
           media_retention_days?: number
+          meta_mensal_cents?: number | null
           nomes_da_barra?: NonNullable<Json>
           onboarded_at?: string | null
           onboarding_state?: NonNullable<Json>
@@ -7522,6 +7524,7 @@ export type Database = {
           legal_name?: string
           locale?: string
           media_retention_days?: number
+          meta_mensal_cents?: number | null
           nomes_da_barra?: NonNullable<Json>
           onboarded_at?: string | null
           onboarding_state?: NonNullable<Json>
@@ -9544,6 +9547,10 @@ export type Database = {
       }
       fn_definir_marca_da_organizacao: {
         Args: { p_actor: string; p_marca: Json; p_org: string }
+        Returns: number
+      }
+      fn_definir_meta_mensal: {
+        Args: { p_actor: string; p_meta_cents: number; p_organization_id: string }
         Returns: number
       }
       fn_definir_minha_barra: {

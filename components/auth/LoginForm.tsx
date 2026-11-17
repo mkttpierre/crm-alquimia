@@ -12,6 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInWithPassword } from "@/app/actions/auth/signInWithPassword";
 
+// Visual da fachada preto e branco (`app/(public)/layout.tsx`).
+const ROTULO = "font-mono text-[11px] font-normal uppercase tracking-[0.24em] text-white/55";
+const CAMPO = "h-12 rounded-sm bg-white/[0.025] px-4 text-[15px] lg:h-12";
+const BOTAO =
+  "h-12 w-full rounded-sm font-mono text-xs uppercase tracking-[0.3em] lg:h-12";
+
 export function LoginForm({ next }: { next?: string }) {
   const t = useT();
   const router = useRouter();
@@ -60,12 +66,13 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className={ROTULO}>Email</Label>
         <Input
           id="email"
           type="email"
           autoComplete="email"
           autoFocus
+          className={CAMPO}
           aria-invalid={errors.email ? true : undefined}
           {...register("email")}
         />
@@ -74,11 +81,12 @@ export function LoginForm({ next }: { next?: string }) {
         )}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="password">{t("Senha")}</Label>
+        <Label htmlFor="password" className={ROTULO}>{t("Senha")}</Label>
         <Input
           id="password"
           type="password"
           autoComplete="current-password"
+          className={CAMPO}
           aria-invalid={errors.password ? true : undefined}
           {...register("password")}
         />
@@ -94,7 +102,7 @@ export function LoginForm({ next }: { next?: string }) {
           {serverError}
         </div>
       )}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className={BOTAO} disabled={isPending}>
         {isPending ? t("Entrando...") : t("Entrar")}
       </Button>
     </form>
