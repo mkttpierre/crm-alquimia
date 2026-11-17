@@ -1,0 +1,44 @@
+# Reduz o contexto de build e — crítico — mantém segredos fora da imagem.
+# Sem isto o `next build` carregaria .env.local e embutiria/vazaria segredos.
+node_modules
+.next
+.git
+.env
+.env.*
+test-results
+tests
+playwright.config.ts
+*.png
+*.log
+.lina
+docs
+tasks
+scratchpad
+.vercel
+!.env.example
+*.tsbuildinfo
+
+# Dado local da instalação: nunca vira camada de imagem (backup tem contatos, conversas e hashes de senha).
+backups/
+logs/
+*.sql.gz
+*.dump
+.trava-backup*
+
+# Ferramentas locais e temporários da CLI do Supabase.
+.mazyos/
+.alethe/
+supabase/.temp/
+# O que o `supabase start` cria DEPOIS do build (sem isto, a reinstalação perdia o cache do `COPY . .` e
+# recompilava o app inteiro), e os temporários do instalador durante o `start`.
+supabase/.branches/
+supabase/.supabase-snapshots/
+.supabase-snapshots/
+supabase/snippets/
+supabase/functions/
+supabase/.migracoes-fora/
+supabase/config.toml.novo
+# Segredos desta instalação: a chave que assina as sessões (e cópias dela) e o ambiente que a CLI lê.
+supabase/signing_keys*
+supabase/.env
+supabase/.env.*

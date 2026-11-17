@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Reconciliação de entrada (canal por QR)",
+    "subtitle": "O que o webhook perdeu entra pelo mesmo caminho, marcado como recuperado, sem o sistema responder sozinho",
+    "output": "reconciliacao-de-entrada.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "externo", "label": "Servidor do canal" },
+    { "id": "app", "label": "Aplicativo" },
+    { "id": "db", "label": "Banco" },
+    { "id": "humano", "label": "Pessoa" }
+  ],
+  "mainPath": ["scheduler", "rota", "leitura", "triagem", "ingestao", "messages", "aviso", "central"],
+  "nodes": [
+    { "id": "scheduler", "lane": "app", "col": 0, "type": "service", "label": "scheduler: a cada 5 min (docker/scheduler/entrypoint.sh)" },
+    { "id": "rota", "lane": "app", "col": 1, "type": "service", "label": "GET /api/v1/cron/reconciliar-entrada (dry_run, horas)" },
+    { "id": "sessoes", "lane": "db", "col": 1, "type": "database", "label": "channel_sessions: Evolution ativas, WORKING" },
+    { "id": "leitura", "lane": "externo", "col": 2, "type": "service", "label": "POST /chat/findMessages (só leitura, paginado, janela 24 h)" },
+    { "id": "triagem", "lane": "app", "col": 3, "type": "service", "label": "Triagem do webhook: sem grupo/status/canal, sem fromMe, sem técnico" },
+    { "id": "presentes", "lane": "db", "col": 3, "type": "database", "label": "messages: external_id já presente na organização?" },
+    { "id": "ingestao", "lane": "app", "col": 4, "type": "service", "label": "dispatchWahaEvent(..., { recuperada: true }): teto 200 por passada" },
+    { "id": "messages", "lane": "db", "col": 5, "type": "database", "label": "messages.metadata.recuperada + carimbo da conversa" },
+    { "id": "dreno", "lane": "app", "col": 6, "type": "service", "label": "event-log drain: message.received recuperada só vai a push e follow-up (só cancela)" },
+    { "id": "motor", "lane": "app", "col": 6, "type": "service", "label": "Motor de disparo: lê a resposta em messages e cancela a fila" },
+    { "id": "aviso", "lane": "db", "col": 7, "type": "database", "label": "agent_inbox_items channel_number_alert (soma, não empilha)" },
+    { "id": "central", "lane": "humano", "col": 8, "type": "ui", "label": "Central de avisos: operador confere e responde à mão" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "scheduler", "to": "rota", "label": "Bearer do segredo interno" },
+    { "id": "e2", "from": "rota", "to": "sessoes", "label": "organização vem da sessão" },
+    { "id": "e3", "from": "rota", "to": "leitura", "label": "por sessão; falha de um chip não para os outros" },
+    { "id": "e4", "from": "leitura", "to": "triagem", "label": "registros crus" },
+    { "id": "e5", "from": "triagem", "to": "presentes", "label": "consulta em lotes de 100" },
+    { "id": "e6", "from": "presentes", "to": "ingestao", "label": "só as ausentes, da mais velha para a mais nova" },
+    { "id": "e7", "from": "ingestao", "to": "messages", "label": "mesmo INSERT do webhook; 23505 deduplica" },
+    { "id": "e8", "from": "messages", "to": "dreno", "label": "gatilho emite message.received" },
+    { "id": "e9", "from": "messages", "to": "motor", "label": "lead conta como respondeu" },
+    { "id": "e10", "from": "ingestao", "to": "aviso", "label": "quantas e de qual conexão" },
+    { "id": "e11", "from": "aviso", "to": "central", "label": "referência channel_session" }
+  ]
+}

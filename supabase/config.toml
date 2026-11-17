@@ -1,0 +1,113 @@
+# Supabase CLI config — CRM ALQUIM(IA)
+# Docs: https://supabase.com/docs/guides/cli/config
+# Este arquivo é versionado. Segredos vivem no .env.local (gerado pelo instalador, nunca versionado).
+#
+# Portas padrão do Supabase local: API 54321, banco 54322, shadow 54320, pooler 54329. Para trocá-las
+# (outra instalação na mesma máquina), rode o instalador com CRM_ALQUIMIA_PORTA_SUPABASE_API e
+# CRM_ALQUIMIA_PORTA_SUPABASE_DB: ele reescreve as linhas `port` abaixo e as URLs de retorno do login.
+#
+# ATENÇÃO: o banco e a API do Supabase local ficam acessíveis na sua REDE LOCAL. O banco usa a senha padrão
+# da CLI (postgres/postgres): qualquer pessoa na mesma rede lê e altera todos os dados do CRM, sem conta.
+# Use em rede confiável ou bloqueie as portas 54321 e 54322 no firewall (veja o SECURITY.md).
+
+project_id = "crm-alquimia"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+
+# Studio e Inbucket DESLIGADOS na instalação local: o Supabase CLI publica as portas em todas as
+# interfaces da máquina (não há como restringir a 127.0.0.1 por aqui), e o Studio dá acesso total ao
+# banco. Para usar o Studio (http://localhost:54323) ou ver os e-mails de teste do login
+# (http://localhost:54324), troque para `true` e recrie o stack. Só faça isso em rede confiável.
+[studio]
+enabled = false
+port = 54323
+api_url = "http://127.0.0.1:54321"
+
+[inbucket]
+enabled = false
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "http://localhost:3000/auth/confirm",
+]
+jwt_expiry = 3600
+# Chaves desta instalação (o instalador gera cada uma uma vez e as mantém nas reinstalações; detalhe no SECURITY.md):
+# - signing_keys_path: a chave ES256 que assina as sessões e as chaves anon e service_role. Sem ela, a CLI usa a
+#   chave que vem dentro dela, igual em toda instalação, e qualquer um forja um token service_role. O arquivo é
+#   gerado pela própria CLI (`gen signing-key`), só o dono o lê, fica fora do git, da imagem e do backup.
+#   Sem o arquivo, `supabase start` e `status` falham (rode o instalador).
+# - jwt_secret: o segredo HS256 que o Auth ainda aceita (tokens sem `kid`). Sem ele, a CLI usaria um texto público.
+# - publishable_key e secret_key: as chaves novas (sb_publishable_/sb_secret_) que a API troca pelas chaves anon e
+#   service_role. As padrão da CLI são públicas: a secreta padrão abriria tudo.
+# A CLI lê `env(...)` do ambiente e do supabase/.env, que o instalador grava (só do dono) com esses três valores.
+jwt_secret = "env(CRM_ALQUIMIA_JWT_SECRET)"
+signing_keys_path = "./signing_keys.json"
+publishable_key = "env(CRM_ALQUIMIA_PUBLISHABLE_KEY)"
+secret_key = "env(CRM_ALQUIMIA_SECRET_KEY)"
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true # Signup self-service (/signup) — provisiona tenant em /auth/confirm
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Cadastro SEM servidor de e-mail: com `false` o /signup já devolve a sessão e o app cria a
+# organização na hora (app/actions/auth/signUp.ts), sem esperar um link que nunca chegaria.
+# Para exigir confirmação por e-mail (produção com SMTP):
+#   1. configure um servidor em [auth.email.smtp] (host, port, user, pass, admin_email, sender_name);
+#   2. troque para `true`;
+#   3. recrie o stack: npx supabase stop && npx supabase start.
+# Com `true` o cadastro passa a depender do link de /auth/confirm (templates em supabase/templates/).
+enable_confirmations = false
+
+# Templates apontam para /auth/confirm (fluxo token_hash do @supabase/ssr).
+# GoTrue fora do Supabase CLI: GOTRUE_MAILER_TEMPLATES_* apontando para estes arquivos.
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail — CRM ALQUIM(IA)"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Redefinir senha — CRM ALQUIM(IA)"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[edge_runtime]
+enabled = false # Não usamos Edge Functions no MVP
+policy = "oneshot"
+
+[analytics]
+enabled = false

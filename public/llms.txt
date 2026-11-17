@@ -1,0 +1,25 @@
+# CRM ALQUIM(IA)
+
+> Open-source AI sales OS: a multi-tenant CRM where AI agents help operate sales and support over WhatsApp. For any business that sells through conversations (e-commerce, clinics, real estate, info-products, services). MIT-licensed, no paid tier. It installs locally with one command (Docker), on the computer of whoever runs it.
+
+Key facts:
+- Category: open-source CRM / AI sales operating system / WhatsApp customer platform
+- AI: per-tenant RAG agents (pgvector) that answer, qualify and move leads; audited AI→human handoff; per-org AI budget. AI comes switched off and only turns on with an API key the user adds.
+- MCP: internal MCP server — AI agents can operate the CRM through the same rules as the REST API
+- WhatsApp: via Evolution API (QR connection), with anti-ban pacing, media and STOP detection. The outbound sender starts in simulation; real sending needs two explicit switches.
+- Multi-niche: configurable vocabulary per pipeline (lead = Customer/Patient/Buyer; won = Paid/Booked/Closed)
+- Compliance: multi-tenant Postgres RLS (isolation tested in CI), LGPD by design (redact, data_request, anonymization), append-only audit log
+- Stack: Next.js 16, React 19, TypeScript, Supabase (Postgres + Auth + Realtime + Storage, run locally by the Supabase CLI), Evolution API
+- License: MIT. Self-hosted: the data stays on the machine where it is installed.
+
+## Docs
+
+- [README (Portuguese)](https://github.com/mkttpierre/crm-alquimia/blob/main/README.md): visão geral, instalação, stack
+- [README (English)](https://github.com/mkttpierre/crm-alquimia/blob/main/README.en.md): project overview, install, stack
+- [README (Spanish)](https://github.com/mkttpierre/crm-alquimia/blob/main/README.es.md): visión general en español
+- [Vision & positioning](https://github.com/mkttpierre/crm-alquimia/blob/main/VISION.md): what the project believes about self-improving AI agents
+- [Architecture](https://github.com/mkttpierre/crm-alquimia/blob/main/ARCHITECTURE.md): one-page architecture
+
+## Repository
+
+- [GitHub](https://github.com/mkttpierre/crm-alquimia): source code, issues, discussions

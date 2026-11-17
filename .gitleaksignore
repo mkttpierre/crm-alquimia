@@ -1,0 +1,15 @@
+# Achados do gitleaks conferidos um a um e julgados falso positivo: constantes de nome de handler e de
+# preferência, senhas e tokens fictícios de teste, a chave `sb_secret_` falsa e a chave de demonstração
+# pública da CLI do Supabase. Formato: arquivo:regra:linha. Se a linha mudar, confira de novo antes de
+# atualizar (gitleaks detect --no-git --report-path ...).
+app/actions/auth/signInWithPassword.test.ts:generic-api-key:66
+app/api/v1/webhooks/channel/[token]/route-global.test.ts:generic-api-key:130
+lib/audit/service-role-configured.test.ts:generic-api-key:25
+lib/followup/gatilho-caso.handler.ts:generic-api-key:23
+lib/followup/gatilho-etapa.handler.ts:generic-api-key:16
+lib/followup/gatilho-presenca.handler.ts:generic-api-key:5
+lib/notifications/prefs.ts:generic-api-key:16
+lib/sentry/scrub.test.ts:generic-api-key:12
+supabase/migrations/MANIFEST.md:generic-api-key:163
+tests/invariants/webhooks-secret-encryption.test.ts:generic-api-key:25
+tests/sonda-radar-isolamento-orgs.ts:jwt:36

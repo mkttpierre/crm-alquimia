@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agentes externos na equipe",
+    "subtitle": "OpenBot, Claude Code e Codex operam o CRM pelo MCP, param antes de fechar a venda e assinam avisos",
+    "output": "agentes-externos.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "Pessoa" },
+    { "id": "agente", "label": "Agente externo" },
+    { "id": "app", "label": "Aplicativo" },
+    { "id": "db", "label": "Banco" }
+  ],
+  "mainPath": ["tela", "rota", "token", "cliente", "mcp", "gates", "ferramentas", "motor"],
+  "nodes": [
+    { "id": "tela", "lane": "humano", "col": 0, "type": "ui", "label": "Equipe › Agentes externos (/app/team/agentes, admin)" },
+    { "id": "rota", "lane": "app", "col": 1, "type": "service", "label": "/api/v1/team/agentes (+ [id]): criar, editar, revogar" },
+    { "id": "token", "lane": "db", "col": 2, "type": "database", "label": "external_agents + api_tokens (actor:ai_agent, role:<papel>, mcp:read/write)" },
+    { "id": "cliente", "lane": "agente", "col": 2, "type": "ui", "label": "OpenBot / Claude Code / Codex com o bloco copiado" },
+    { "id": "mcp", "lane": "app", "col": 3, "type": "service", "label": "/api/mcp → validateBearerToken (agente revogado = 401)" },
+    { "id": "gates", "lane": "app", "col": 4, "type": "service", "label": "lib/mcp/server.ts: escopo, papel, fechamento-humano, pode_motor, presença" },
+    { "id": "ferramentas", "lane": "app", "col": 5, "type": "service", "label": "lib/mcp/tools: disparo, tarefas, conversas esperando, guia" },
+    { "id": "motor", "lane": "app", "col": 6, "type": "service", "label": "lib/disparo-painel/operacoes.ts (a MESMA função das rotas da tela)" },
+    { "id": "audit", "lane": "db", "col": 5, "type": "database", "label": "api_audit_log: mcp.tool_called e disparo.config_atualizada com o agente nomeado" },
+    { "id": "presenca", "lane": "db", "col": 4, "type": "database", "label": "fn_marcar_uso_do_agente_externo (1 escrita / 30 s)" },
+    { "id": "equipe", "lane": "humano", "col": 5, "type": "ui", "label": "Barra: Equipe agora (online < 5 min, última ação)" },
+    { "id": "emissores", "lane": "app", "col": 6, "type": "service", "label": "pos-entrada, health, operacoes, registrar-venda, criarTarefa, cron conversa-esperando" },
+    { "id": "eventlog", "lane": "db", "col": 7, "type": "database", "label": "event_log: lead.respondeu, conversa.esperando, chip.caiu/voltou, motor.parou, venda.paga, tarefa.criada_para_agente" },
+    { "id": "webhook", "lane": "agente", "col": 8, "type": "service", "label": "motor de regras → call_webhook (HMAC, 3 tentativas) → agente" }
+  ],
+  "edges": [
+    { "from": "tela", "to": "rota", "label": "cria o agente" },
+    { "from": "rota", "to": "token", "label": "token uma vez; só o hash fica" },
+    { "from": "tela", "to": "cliente", "label": "bloco de conexão (Copiar)" },
+    { "from": "cliente", "to": "mcp", "label": "Authorization: Bearer" },
+    { "from": "mcp", "to": "token", "label": "acha o agente do token" },
+    { "from": "mcp", "to": "gates", "label": "cada chamada" },
+    { "from": "gates", "to": "ferramentas", "label": "permitida" },
+    { "from": "gates", "to": "audit", "label": "recusa fica no histórico" },
+    { "from": "gates", "to": "presenca", "label": "última ação" },
+    { "from": "presenca", "to": "equipe", "label": "online / ausente" },
+    { "from": "ferramentas", "to": "motor", "label": "pausar, retomar, ajustar ritmo, trocar modo" },
+    { "from": "motor", "to": "audit", "label": "autor = agente" },
+    { "from": "emissores", "to": "eventlog", "label": "emit_event" },
+    { "from": "eventlog", "to": "webhook", "label": "regra assinada" }
+  ]
+}

@@ -1,0 +1,45 @@
+<!--
+  MODELO com marcadores (`__APP_NAME__`, `__ACCENT__`, `__ACCENT_FG__`) que nenhum
+  script substitui nesta versão. Ver o cabeçalho de confirmation.html para o par de
+  cores, para trocar os marcadores à mão e para o caminho do GoTrue próprio.
+
+  `&`, nunca `?`: `.RedirectTo` já chega com `?type=recovery` embutido
+  (app/actions/auth/requestPasswordReset.ts) — é o que sobrevive ao hop pelo
+  GoTrue quando o link chega via PKCE (`code`) em vez de token_hash.
+  Usar `?` aqui duplica o separador (`...?type=recovery?token_hash=...`),
+  o parser de URL do browser para de reconhecer `token_hash` como
+  parâmetro (vira parte do valor de `type`), e /auth/confirm redireciona
+  pra `/login?error=link_invalido` mesmo com o link correto — medido nas
+  specs password-recovery.spec.ts e signup-journey.spec.ts.
+
+  CABEÇALHO: a imagem de `{{ .SiteURL }}/icone-da-marca/email`, servida pelo próprio
+  app (o e-mail só pode buscar imagem por URL absoluta; `.SiteURL` é o Site URL do
+  GoTrue). Quem decide o que ela mostra é o app, na hora em que o e-mail é aberto:
+  o sol e a escrita do produto quando nada está configurado, o nome da marca em
+  texto quando algo está. Nenhum script de instalação participa, e este arquivo
+  funciona cru. O `alt` é vazio de propósito: não há como pôr o nome da marca aqui
+  sem um script, e o corpo do e-mail já o diz.
+-->
+<html>
+  <body style="font-family: sans-serif; color: #1c1a16; background: #faf9f6; max-width: 480px; margin: 0 auto; padding: 24px;">
+    <p style="margin: 0 0 24px;">
+      <img
+        src="{{ .SiteURL }}/icone-da-marca/email"
+        width="150"
+        height="40"
+        alt=""
+        style="display: block; border: 0; width: 150px; height: 40px;"
+      />
+    </p>
+    <h2 style="font-size: 18px;">Redefinir senha</h2>
+    <p>Recebemos um pedido para redefinir a senha da sua conta no __APP_NAME__. Clique no botão abaixo para escolher uma nova senha:</p>
+    <p style="margin: 24px 0;">
+      <a
+        href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}"
+        style="background: #506d48; background: __ACCENT__; color: #ffffff; color: __ACCENT_FG__; padding: 10px 20px; border-radius: 6px; text-decoration: none; display: inline-block;"
+        >Redefinir senha</a
+      >
+    </p>
+    <p style="font-size: 12px; color: #7d786c;">Se você não pediu a redefinição, ignore este e-mail — sua senha atual continua valendo.</p>
+  </body>
+</html>

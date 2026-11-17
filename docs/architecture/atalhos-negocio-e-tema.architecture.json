@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": { "title": "Atalhos, produtos e tema — superfícies novas do operador", "subtitle": "funis editáveis, itens por negócio, registrar venda, painel de faturamento, comissão fora da IA e navegação visual", "output": "atalhos-negocio-e-tema.html", "quality_profile": "standard" },
+  "lanes": [
+    { "id": "tela", "label": "O que o operador vê" }, { "id": "api", "label": "Borda HTTP" }, { "id": "regra", "label": "Repositórios e regras" }, { "id": "dados", "label": "Banco" }, { "id": "shell", "label": "Navegação e tema" }
+  ],
+  "mainPath": ["atalhos", "salvarfunil", "funildb", "motor"],
+  "nodes": [
+    { "id": "atalhos", "lane": "tela", "col": 1, "type": "frontend", "label": "Atalhos / funis do operador", "sublabel": "composer e editor de funis" },
+    { "id": "salvarfunil", "lane": "api", "col": 2, "type": "database", "label": "fn_salvar_funil_do_operador", "sublabel": "grava funil e etapas transacionalmente" },
+    { "id": "funildb", "lane": "dados", "col": 3, "type": "database", "label": "operator_funnels + operator_funnel_steps", "sublabel": "funis próprios e passos ordenados" },
+    { "id": "motor", "lane": "regra", "col": 4, "type": "service", "label": "Resposta de funil / motor", "sublabel": "lê etapas e aplica presença, espera e estado do motor" },
+    { "id": "negocio", "lane": "tela", "col": 1, "type": "frontend", "label": "LeadDossier · Produtos", "sublabel": "itens ligados ao negócio do funil" },
+    { "id": "itemsapi", "lane": "api", "col": 2, "type": "api", "label": "/api/v1/leads/{id}/items", "sublabel": "lista e altera itens do negócio" },
+    { "id": "itemsrepo", "lane": "regra", "col": 3, "type": "service", "label": "repositório de itens", "sublabel": "valida e persiste itens e total" },
+    { "id": "itemsdb", "lane": "dados", "col": 4, "type": "database", "label": "crm_lead_items", "sublabel": "itens por negócio com RLS" },
+    { "id": "compras", "lane": "tela", "col": 1, "type": "frontend", "label": "Contato · aba Compras", "sublabel": "HistoricoDeCompras" },
+    { "id": "historyapi", "lane": "api", "col": 2, "type": "api", "label": "/api/v1/contacts/{id}/purchase-history", "sublabel": "histórico agregado por contato" },
+    { "id": "historyrepo", "lane": "regra", "col": 3, "type": "service", "label": "repositório de histórico", "sublabel": "negócios ganhos e pedidos pagos" },
+    { "id": "faturamento", "lane": "tela", "col": 1, "type": "frontend", "label": "/app/faturamento", "sublabel": "Análise · Faturamento" },
+    { "id": "revenueapi", "lane": "api", "col": 2, "type": "api", "label": "/api/v1/revenue", "sublabel": "séries, totais e filtros por período" },
+    { "id": "revenuerepo", "lane": "regra", "col": 3, "type": "service", "label": "repositório e regra de faturamento", "sublabel": "agrega receita por período, produto e funil" },
+    { "id": "leads", "lane": "dados", "col": 4, "type": "database", "label": "crm_leads + pedidos pagos", "sublabel": "fontes da receita e do histórico" },
+    { "id": "vender", "lane": "tela", "col": 1, "type": "frontend", "label": "Registrar venda (quadro)", "sublabel": "linha de Leads, contato e dossiê; valor por linha e data da venda" },
+    { "id": "salesapi", "lane": "api", "col": 2, "type": "api", "label": "/api/v1/sales", "sublabel": "POST com Idempotency-Key, agent+, organização da sessão" },
+    { "id": "vendasvc", "lane": "regra", "col": 3, "type": "service", "label": "registrar venda (TS)", "sublabel": "data no fuso da organização, rastro na timeline e no audit, erros traduzidos" },
+    { "id": "vendafn", "lane": "dados", "col": 4, "type": "database", "label": "fn_registrar_venda", "sublabel": "uma transação: negócio, linhas e ganho em closed_at; idempotente por chave" },
+    { "id": "mcpia", "lane": "api", "col": 2, "type": "api", "label": "Ferramentas MCP e agente de IA", "sublabel": "dois ingressos: MCP externo e ponte do agente nativo" },
+    { "id": "semcomissao", "lane": "regra", "col": 3, "type": "service", "label": "filtro sem-comissão", "sublabel": "negócio de venda registrada sai com value_cents nulo" },
+    { "id": "nomesat", "lane": "regra", "col": 3, "type": "service", "label": "nomes dos atendentes", "sublabel": "só o nome, só de membros da organização da sessão" },
+    { "id": "shell", "lane": "shell", "col": 1, "type": "frontend", "label": "AppShell + BarraLateral + Topo", "sublabel": "navegação principal" },
+    { "id": "tema", "lane": "shell", "col": 2, "type": "frontend", "label": "Tema escuro/claro", "sublabel": "tema escuro padrão, alternância preservada" },
+    { "id": "layout", "lane": "shell", "col": 3, "type": "frontend", "label": "layout + estilos globais", "sublabel": "define provider e tokens visuais" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "atalhos", "to": "salvarfunil", "label": "salva funil e etapas" }, { "id": "e2", "from": "salvarfunil", "to": "funildb", "label": "escrita transacional" }, { "id": "e3", "from": "motor", "to": "funildb", "label": "lê passos do funil ao executar" }, { "id": "e4", "from": "atalhos", "to": "motor", "label": "seleciona e inicia funil no chat" },
+    { "id": "e5", "from": "negocio", "to": "itemsapi", "label": "lista, cria, edita e remove itens" }, { "id": "e6", "from": "itemsapi", "to": "itemsrepo", "label": "validação e persistência" }, { "id": "e7", "from": "itemsrepo", "to": "itemsdb", "label": "escreve itens e total" }, { "id": "e8", "from": "itemsapi", "to": "itemsdb", "label": "consulta por lead e organização" },
+    { "id": "e9", "from": "compras", "to": "historyapi", "label": "carrega histórico do contato" }, { "id": "e10", "from": "historyapi", "to": "historyrepo", "label": "agrega compras" }, { "id": "e11", "from": "historyrepo", "to": "leads", "label": "lê negócios ganhos e pedidos pagos" }, { "id": "e12", "from": "historyapi", "to": "itemsdb", "label": "inclui produtos dos negócios" },
+    { "id": "e13", "from": "faturamento", "to": "revenueapi", "label": "consulta período, produto e funil" }, { "id": "e14", "from": "revenueapi", "to": "revenuerepo", "label": "calcula agregados" }, { "id": "e15", "from": "revenuerepo", "to": "leads", "label": "lê negócios ganhos e pedidos pagos" }, { "id": "e16", "from": "revenuerepo", "to": "itemsdb", "label": "agrupa receita por produto" },
+    { "id": "e21", "from": "vender", "to": "salesapi", "label": "confirma a venda com chave de idempotência" }, { "id": "e22", "from": "salesapi", "to": "vendasvc", "label": "valida o corpo e chama a operação" }, { "id": "e23", "from": "vendasvc", "to": "vendafn", "label": "RPC com a sessão do usuário (a RLS vale)" }, { "id": "e24", "from": "vendafn", "to": "itemsdb", "label": "grava as linhas com o valor editado por linha" },
+    { "id": "e25", "from": "vendafn", "to": "leads", "label": "ganha o negócio na data da venda (closed_at)" }, { "id": "e26", "from": "mcpia", "to": "semcomissao", "label": "toda saída de ferramenta passa pelo filtro" }, { "id": "e27", "from": "semcomissao", "to": "leads", "label": "lê negócios de venda registrada, nunca entrega o valor" },
+    { "id": "e28", "from": "revenueapi", "to": "nomesat", "label": "resolve o nome de quem vendeu" }, { "id": "e29", "from": "nomesat", "to": "leads", "label": "só ids de donos de negócios da organização" },
+    { "id": "e17", "from": "shell", "to": "layout", "label": "shell recebe tema e moldura visual" }, { "id": "e18", "from": "shell", "to": "tema", "label": "mostra navegação no tema ativo" }, { "id": "e19", "from": "tema", "to": "layout", "label": "provider define tema inicial e preferência" }, { "id": "e20", "from": "layout", "to": "tema", "label": "tokens CSS aplicam paleta escura/clara" }
+  ],
+  "cards": [{ "dot": "amber", "title": "Limite da evidência", "items": ["Este mapa registra relações confirmadas pelos componentes, APIs, repositórios e migrations dos commits 347f53b, ed8bb15 e 355f635.", "O mapa é fonte JSON; não há render HTML correspondente nesta atualização.", "Registrar venda, painel de faturamento e filtro sem-comissão (migration 0251) foram escritos em 08/11/2026 sem commit e sem prova em navegador; a função SQL ainda não rodou contra Postgres real."] }]
+}

@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Personalizar a barra lateral",
+    "subtitle": "Preferência pessoal e nomes da organização, só apresentação (migration 0261)",
+    "output": "personalizar-barra.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "humano",
+      "label": "Pessoa"
+    },
+    {
+      "id": "app",
+      "label": "Aplicativo"
+    },
+    {
+      "id": "db",
+      "label": "Banco"
+    }
+  ],
+  "mainPath": ["tela", "acao_pessoa", "fn_pessoa", "prefs", "carregar", "projecao", "barra"],
+  "nodes": [
+    {
+      "id": "tela",
+      "lane": "humano",
+      "col": 0,
+      "type": "ui",
+      "label": "Configurações › Personalizar (Sua barra / Nomes dos tópicos / Marca)"
+    },
+    {
+      "id": "acao_pessoa",
+      "lane": "app",
+      "col": 1,
+      "type": "service",
+      "label": "updateMinhaBarra: Zod + sessão, qualquer papel"
+    },
+    {
+      "id": "acao_admin",
+      "lane": "app",
+      "col": 1,
+      "type": "service",
+      "label": "updateNomesDaBarra: Zod + admin + MFA + auditoria"
+    },
+    {
+      "id": "fn_pessoa",
+      "lane": "db",
+      "col": 2,
+      "type": "database",
+      "label": "fn_definir_minha_barra (só a linha do ator)"
+    },
+    {
+      "id": "fn_nomes",
+      "lane": "db",
+      "col": 2,
+      "type": "database",
+      "label": "fn_definir_nomes_da_barra (admin, 42501)"
+    },
+    {
+      "id": "prefs",
+      "lane": "db",
+      "col": 3,
+      "type": "database",
+      "label": "user_organizations.preferencias_da_barra"
+    },
+    {
+      "id": "nomes",
+      "lane": "db",
+      "col": 3,
+      "type": "database",
+      "label": "organizations.nomes_da_barra"
+    },
+    {
+      "id": "carregar",
+      "lane": "app",
+      "col": 4,
+      "type": "service",
+      "label": "carregarPersonalizacaoDaBarra → activeOrg.barra (layout de /app)"
+    },
+    {
+      "id": "projecao",
+      "lane": "app",
+      "col": 5,
+      "type": "service",
+      "label": "barraLateral(): interface do admin → nomes → ocultos → ordem"
+    },
+    {
+      "id": "barra",
+      "lane": "humano",
+      "col": 6,
+      "type": "ui",
+      "label": "Barra lateral e gaveta do celular"
+    },
+    {
+      "id": "audit",
+      "lane": "humano",
+      "col": 7,
+      "type": "ui",
+      "label": "org.barra_nomes_updated → Auditoria"
+    }
+  ],
+  "edges": [
+    {
+      "from": "tela",
+      "to": "acao_pessoa",
+      "label": "salvar / restaurar padrão"
+    },
+    {
+      "from": "tela",
+      "to": "acao_admin",
+      "label": "salvar nomes (admin)"
+    },
+    {
+      "from": "acao_pessoa",
+      "to": "fn_pessoa",
+      "label": "ator e organização da sessão"
+    },
+    {
+      "from": "acao_admin",
+      "to": "fn_nomes",
+      "label": "papel conferido de novo no banco"
+    },
+    {
+      "from": "fn_pessoa",
+      "to": "prefs",
+      "label": "grava a linha do próprio ator"
+    },
+    {
+      "from": "fn_nomes",
+      "to": "nomes",
+      "label": "substitui o mapa, sem tocar em settings"
+    },
+    {
+      "from": "prefs",
+      "to": "carregar",
+      "label": "leitura tolerante a lixo"
+    },
+    {
+      "from": "nomes",
+      "to": "carregar",
+      "label": "leitura tolerante a lixo"
+    },
+    {
+      "from": "carregar",
+      "to": "projecao",
+      "label": "mesmo objeto no SSR e na hidratação"
+    },
+    {
+      "from": "projecao",
+      "to": "barra",
+      "label": "linhas visíveis, na ordem, com o nome"
+    },
+    {
+      "from": "projecao",
+      "to": "tela",
+      "label": "a tela lista a mesma projeção, com as ocultas marcadas"
+    },
+    {
+      "from": "barra",
+      "to": "tela",
+      "label": "Configurações nunca some: caminho de volta"
+    },
+    {
+      "from": "acao_admin",
+      "to": "audit",
+      "label": "contagem de linhas renomeadas, nunca os nomes"
+    },
+    {
+      "from": "audit",
+      "to": "tela",
+      "label": "rever quem mudou os nomes"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+/**
+ * Supabase admin client (service role). BYPASSA RLS.
+ *
+ * REGRA CRÍTICA: handlers que usam este client DEVEM filtrar `organization_id`
+ * manualmente, resolvido de fonte confiável (cookie, JWT validado, webhook
+ * secret, path token) — NUNCA do request body.
+ *
+ * Uso permitido:
+ *  - Webhook handlers (WAHA, Nuvemshop)
+ *  - Cron / workers
+ *  - Onboarding / admin operations explícitas
+ *  - Health check (read-only)
+ *
+ * Uso PROIBIDO:
+ *  - Qualquer rota acionada por usuário final em fluxo normal
+ *  - Substituir auth por conveniência
+ */
+
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
+import { env } from "@/lib/env";
+import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
+
+let _admin: SupabaseClient | null = null;
+
+export function createAdminClient(): SupabaseClient {
+  if (_admin) return _admin;
+
+  _admin = createSupabaseClient(urlDoSupabaseNoServidor(env), env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: {
+        "X-Client-Info": "crm-alquimia/admin",
+      },
+    },
+  });
+
+  return _admin;
+}

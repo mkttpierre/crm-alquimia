@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Casca do app e tela Início",
+    "subtitle": "barra lateral, topo e o painel do dia (protótipo A)",
+    "output": "casca-e-inicio.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "Pessoa" },
+    { "id": "app", "label": "Aplicativo" },
+    { "id": "db", "label": "Banco" }
+  ],
+  "mainPath": ["entrada", "home", "inicio", "resumo", "tabelas"],
+  "nodes": [
+    { "id": "entrada", "lane": "humano", "col": 0, "type": "ui", "label": "Abre /app" },
+    { "id": "home", "lane": "app", "col": 1, "type": "service", "label": "homeDaInterface → /app/inicio (ou Inbox na simplificada)" },
+    { "id": "inicio", "lane": "humano", "col": 2, "type": "ui", "label": "Tela Início: 4 números, 8 semanas, funis, atividade" },
+    { "id": "resumo", "lane": "app", "col": 3, "type": "service", "label": "lib/inicio/resumo.ts (client do usuário, filtro por org)" },
+    { "id": "tabelas", "lane": "db", "col": 4, "type": "database", "label": "conversations · crm_leads · disparo_envios · messages · crm_pipelines/stages · crm_lead_activities" },
+    { "id": "catalogo", "lane": "app", "col": 1, "type": "service", "label": "BARRA_LATERAL + barraLateral() (catálogo ∩ papel ∩ interface)" },
+    { "id": "barra", "lane": "humano", "col": 2, "type": "ui", "label": "Barra lateral: marca, 3 blocos, submenus, Equipe agora, usuário" },
+    { "id": "roster", "lane": "app", "col": 3, "type": "service", "label": "GET /api/v1/attendants/availability (useAttendants)" },
+    { "id": "presenca", "lane": "db", "col": 4, "type": "database", "label": "attendant_availability + carga de conversas abertas" },
+    { "id": "marca", "lane": "app", "col": 3, "type": "service", "label": "lib/branding (logo/nome próprio) → senão sol + escrita" },
+    { "id": "topo", "lane": "humano", "col": 2, "type": "ui", "label": "Topo: menu, título, ⌘K, sino da Central, avatar" },
+    { "id": "central", "lane": "app", "col": 3, "type": "service", "label": "Contagem leve da Central de avisos" }
+  ],
+  "edges": [
+    { "from": "entrada", "to": "home", "label": "redireciona" },
+    { "from": "home", "to": "inicio", "label": "tela inicial" },
+    { "from": "inicio", "to": "resumo", "label": "carrega o dia" },
+    { "from": "resumo", "to": "tabelas", "label": "contagens por organization_id" },
+    { "from": "catalogo", "to": "barra", "label": "linhas e submenus visíveis" },
+    { "from": "barra", "to": "inicio", "label": "porta: Início" },
+    { "from": "barra", "to": "roster", "label": "Equipe agora (agent+)" },
+    { "from": "roster", "to": "presenca", "label": "online/ausente e carga" },
+    { "from": "barra", "to": "marca", "label": "marca no topo da barra" },
+    { "from": "topo", "to": "central", "label": "contador do sino" },
+    { "from": "topo", "to": "catalogo", "label": "título da tela" }
+  ]
+}
